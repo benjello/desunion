@@ -7,12 +7,14 @@ Created on 12 oct. 2012
 @author: Pyke75, benjello
 '''
 
-from src.core.simulation import ScenarioSimulation
-from src.france.utils import Scenario
-
 import sys
 from PyQt4.QtGui import QMainWindow, QApplication
 from src.widgets.matplotlibwidget import MatplotlibWidget
+from pandas import DataFrame
+
+from src.core.simulation import ScenarioSimulation
+from src.france.utils import Scenario
+
 
 class ApplicationWindow(QMainWindow):
     def __init__(self):
@@ -111,7 +113,7 @@ class DesunionSimulation(ScenarioSimulation):
         #          paid pension alim. are "charges déductibes" on foyers' declarations  
             alv_net_chef = alv_chef - alr_chef
             if alv_net_chef >= 0:
-                scenario_chef.declar[0].update({'f6gu': alv_net_chef})
+                scenario_chef.declar[0].update({'f6gu': alv_net_chef}) # TODO: pas forcément en 6gu 
                 scenario_part.indiv[0].update({'alr': alv_net_chef})
             else:
                 scenario_chef.indiv[0].update({'alr': -alv_net_chef})
@@ -127,8 +129,6 @@ class DesunionSimulation(ScenarioSimulation):
                 for key, val in variables:
                     scenario_part.menage[0].update({key: val})
                 
-        #  
-        # children {noi: ['parent non gardien', temps_de_garde] }, pension_alimentaire 
         
         self.scenario_chef = scenario_chef
         self.scenario_part = scenario_part
@@ -153,16 +153,15 @@ class DesunionSimulation(ScenarioSimulation):
 
     def create_united_couple(self, sal_chef, sal_part, date = None):
         '''
-        Construction du couple avant désunion
+        Construction du couple avant désunion TODO: translate in english
         '''
          
         scenario = self.scenario
+        
         scenario.addIndiv(1, datetime.strptime("1975-01-01" ,"%Y-%m-%d").date(), "conj", "part")
             
-        i = 2
-        for child in self.children.values():
-            scenario.addIndiv(i, child['birth'], "pac", "enf" )   # , "pac" + str(i-1), "enf" + str(i-1))
-            i += 1 
+        for noi, child in self.children.iteritems():
+            scenario.addIndiv(noi, child['birth'], "pac", "enf" )  
         
         scenario.indiv[0].update({ 'sali': sal_chef })
         scenario.indiv[1].update({ 'sali': sal_part})
@@ -205,7 +204,7 @@ class DesunionSimulation(ScenarioSimulation):
         '''
         Formats data into a dataframe
         '''
-        from pandas import DataFrame
+
         datas = self.compute(difference = difference)
         dfs = dict()
         
@@ -282,6 +281,6 @@ if __name__ == '__main__':
     print desunion.scenario_chef
     print desunion.scenario_part
     print df.to_string()
-    df.to_excel(destination_dir + 'file.xlsx', sheet_name='desunion')
+#    df.to_excel(destination_dir + 'file.xlsx', sheet_name='desunion')
 #    export_to_excel(data)
     
