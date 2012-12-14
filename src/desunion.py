@@ -28,6 +28,9 @@ class ApplicationWindow(QMainWindow):
 
 from datetime import datetime    
 
+# TODO check the statmarit, quimen, quifam add check consistency
+
+
 
 class DesunionSimulation(ScenarioSimulation):
     """
@@ -201,13 +204,45 @@ class DesunionSimulation(ScenarioSimulation):
 
         return datas
     
-    
+    def compute_nivvie(self):
+        """
+        Compute nivvie and append it to dataframe
+        """
+
+        def _uc(age):
+            '''
+            Calcule le nombre d'unités de consommation du ménage avec l'échelle de l'insee
+            à partir des age en mois des individus
+            '''
+            uc_adt = 0.5
+            uc_enf = 0.3
+            uc = 0.5
+            for ag in age.itervalues():
+                adt = (15 <= ag) & (ag <= 150)
+                enf = (0  <= ag) & (ag <= 14)
+                uc += adt*uc_adt + enf*uc_enf
+            return uc
+        
+        self.uc = dict()
+        scenari = { 'couple' : self.scenario, 
+                    'chef'   : self.scenario_chef, 
+                    'part'   : self.scenario_part }
+
+        for name, scenario in scenari.iteritems():
+            age = dict()
+            for noi, vars in scenario.indiv.iteritems():
+                age[noi] = int((self.datesim - vars['birth']).days/365.25)
+            print name, age, _uc(age)        
+            self.uc[name]= _uc(age)
+        
     def get_results_dataframe(self, default = False, difference = True, index_by_code = False):
         '''
         Formats data into a dataframe
         '''
 
         datas = self.compute(difference = difference)
+        self.compute_nivvie()
+        uc = self.uc
         dfs = dict()
         
         for scenario, dico in datas.iteritems():
@@ -222,18 +257,23 @@ class DesunionSimulation(ScenarioSimulation):
             
             for row in data:
                 if not row.desc in ('root'):
+                    if row.code == 'revdisp':
+                        revdisp = row.vals
                     if index_by_code is True:
                         index.append(row.code)
                         data_dict[row.code] = row.vals
                     else:
                         index.append(row.desc)
                         data_dict[row.desc] = row.vals
-                    
+            
+
             df = DataFrame(data_dict).T
             df = df.reindex(index)
             df = df.rename(columns = {0: scenario})
-            
+            nivvie = revdisp/uc[scenario] 
+            df = df.set_value('nivvie', scenario, nivvie)
             dfs[scenario] = df
+            
         
         first = True
 
@@ -243,10 +283,11 @@ class DesunionSimulation(ScenarioSimulation):
                 first = False
             else:
                 df_final = concat([df_final, df], axis=1, join ="inner")
-                
-        print "final"
         df_final = df_final
-        print df_final.to_string()
+        
+        
+        
+
         return df_final
 
 if __name__ == '__main__':
@@ -281,10 +322,11 @@ if __name__ == '__main__':
     desunion.break_union()     
 
     df = desunion.get_results_dataframe()
-#    print desunion.scenario_chef
-#    print desunion.scenario_part
+    print desunion.scenario_chef
+    print desunion.scenario_part
+    desunion.compute_nivvie()
     print df.to_string()
 
-    df.to_excel(destination_dir + 'file.xlsx', sheet_name='desunion')
+#    df.to_excel(destination_dir + 'file.xlsx', sheet_name='desunion')
 
     
