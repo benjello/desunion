@@ -16,6 +16,8 @@ from src.core.simulation import ScenarioSimulation
 from src.france.utils import Scenario
 
 
+from pandas import concat
+
 class ApplicationWindow(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
@@ -209,7 +211,6 @@ class DesunionSimulation(ScenarioSimulation):
         dfs = dict()
         
         for scenario, dico in datas.iteritems():
-            print dico.keys()
             data = dico['data']
             data_default = dico['default']
 
@@ -235,15 +236,17 @@ class DesunionSimulation(ScenarioSimulation):
             dfs[scenario] = df
         
         first = True
+
         for df in dfs.itervalues():
-            print df.columns
             if first:
                 df_final = df
                 first = False
             else:
-                df_final = df_final.join(df)
+                df_final = concat([df_final, df], axis=1, join ="inner")
                 
-        df_final = df_final.reset_index()
+        print "final"
+        df_final = df_final
+        print df_final.to_string()
         return df_final
 
 if __name__ == '__main__':
@@ -259,7 +262,7 @@ if __name__ == '__main__':
     desunion = DesunionSimulation()
     desunion.set_config(nmen = 1, year = yr)
     desunion.set_param()
-    print desunion.scenario
+
     
     children =  {'Riri': {'birth': "2000-01-01", 'non_custodian' : 'chef', 
                     'temps_garde': 'classique', 'pension_alim' : 12*500},
@@ -272,15 +275,16 @@ if __name__ == '__main__':
     desunion.set_children(children)
     desunion.create_united_couple(sal_chef, sal_part)
 
-    print desunion.children
+
     
     
     desunion.break_union()     
 
     df = desunion.get_results_dataframe()
-    print desunion.scenario_chef
-    print desunion.scenario_part
+#    print desunion.scenario_chef
+#    print desunion.scenario_part
     print df.to_string()
-#    df.to_excel(destination_dir + 'file.xlsx', sheet_name='desunion')
-#    export_to_excel(data)
+
+    df.to_excel(destination_dir + 'file.xlsx', sheet_name='desunion')
+
     
