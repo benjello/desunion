@@ -8,7 +8,7 @@ Created on 12 oct. 2012
 '''
 
 from src.core.simulation import ScenarioSimulation
-from src.france.utils import Scenario
+from src.countries.france.utils import Scenario
 
 import sys
 from PyQt4.QtGui import QMainWindow, QApplication
@@ -140,8 +140,11 @@ class DesunionSimulation(ScenarioSimulation):
     def set_children(self, children):
         """
         Sets the children involved
-        children is a dict of dict of the form 
-        {'MyName': {'birth': "2000-01-01", 'non_custodian' : 'chef', 
+        
+        Parameters
+        ----------
+        children:   dict of dict of the following form 
+                    {'MyName': {'birth': "2000-01-01", 'non_custodian' : 'chef', 
                     'temps_garde': 'classique', 'pension_alim' : 1000}}
          
         """ 
@@ -155,7 +158,16 @@ class DesunionSimulation(ScenarioSimulation):
 
     def create_united_couple(self, sal_chef, sal_part, date = None):
         '''
-        Construction du couple avant désunion
+        Creates the united couple
+        
+        Parameters
+        ----------
+        sal_chef : float
+                   Salary of the non custodian parent
+        sal_part : float
+                   Salary of the custodian parent
+        date : datetime
+               Date of the legislation 
         '''
          
         scenario = self.scenario
@@ -175,30 +187,27 @@ class DesunionSimulation(ScenarioSimulation):
         Computes data_dict  from scenari
         """
         from src.core.datatable import DataTable
-        from src.core.utils import gen_output_data
+        from src.core.simulation import ScenarioSimulation
+        
         
         scenari = { 'couple' : self.scenario, 
                     'chef'   : self.scenario_chef, 
                     'part'   : self.scenario_part }
         datas = dict()
-        
-        for name, scenario in scenari.iteritems():
-            input_table = DataTable(self.InputTable, scenario = scenario, datesim = self.datesim, country = self.country)
-            output, output_default = self._preproc(input_table)
-        
-            data = gen_output_data(output, filename = self.totaux_file)        
-            data_default = gen_output_data(output_default, filename = self.totaux_file) # TODO: take gen_output_data form core.utils
-            
-            if self.reforme:
-                output_default.reset()
-                data_default = gen_output_data(output_default, filename = self.totaux_file) # TODO: take gen_output_data form core.utils
-                if difference:
-                    data.difference(data_default)            
-            else:
-                data_default = data
-                
-            datas[name] = {'data' : data, 'default': data_default}
 
+        for name, scenario in scenari.iteritems():
+            print name
+            print self.datesim
+            simu = ScenarioSimulation()
+            simu.set_config(year = self.datesim.year, scenario = scenario, 
+                            country = self.country,
+                            totaux_file = self.totaux_file, 
+                            nmen = self.nmen, 
+                            maxrev = self.maxrev)
+            simu.set_param()
+        
+            data, data_default = simu.compute(difference)
+            datas[name] = {'data' : data, 'default': data_default}
 
         return datas
     
@@ -276,9 +285,6 @@ if __name__ == '__main__':
     desunion.set_children(children)
     desunion.create_united_couple(sal_chef, sal_part)
 
-
-    
-    
     desunion.break_union()     
 
     df = desunion.get_results_dataframe()
