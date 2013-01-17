@@ -7,12 +7,16 @@ Created on 12 oct. 2012
 @author: Pyke75, benjello
 '''
 
+from __future__ import division 
 from src.core.simulation import ScenarioSimulation
-from src.countries.france.utils import Scenario
+from src.core.utils_old import of_import
 
 import sys
-from PyQt4.QtGui import QMainWindow, QApplication
+from src.qt.QtGui import QMainWindow, QApplication
 from src.widgets.matplotlibwidget import MatplotlibWidget
+from pandas import DataFrame
+
+from src.core.simulation import Simulation
 
 from pandas import concat
 
@@ -26,16 +30,78 @@ class ApplicationWindow(QMainWindow):
 
 from datetime import datetime    
 
+# TODO check the statmarit, quimen, quifam add check consistency
 
-class DesunionSimulation(ScenarioSimulation):
+
+def total_pension(rev_non_custodian, nb_enf, temps_garde = "classique"):
+    """
+    Sets total pension according to the French Ministry of justice table
+    
+    Parameters
+    ----------
+    rev_non_custodian : float
+                        Revenue of the non-custodian parent
+    nb_enf : integer
+             number of children member of the custodian parent household
+    temps_garde : amplitude du droit de visite
+    
+    Returns
+    -------
+    """
+    min_vital = 475
+    
+    coef = {'1': .18,
+            '2': .31,
+            '3': .40, 
+            '4': .47,
+            '5': .53,
+            '6': .57}
+    
+    rev_net = (rev_non_custodian - 475)
+    if temps_garde == "classique":
+        pension = rev_net*coef[str(nb_enf)]*.75 # TODO arrondi au .5 point de pourcentage à faire
+        
+    elif temps_garde == "reduite":
+        pension = rev_net*coef[str(nb_enf)]
+        
+    elif temps_garde == "alternee":
+        pension = rev_net*coef[str(nb_enf)]/2
+    
+    return pension
+
+def _uc(age, only_kids = False):
+        '''
+        Calcule le nombre d'unités de consommation du ménage avec l'échelle de l'insee
+        à partir des age en mois des individus
+        ??? AGE EN ANNEE PLUTOT NON ? 
+        '''
+
+        uc_adt = 0.5
+        uc_enf = 0.3
+        uc = 0.5
+        if only_kids:
+            uc = 0
+             
+        for ag in age.itervalues():
+            adt = (15 <= ag) & (ag <= 150)
+            enf = (0  <= ag) & (ag <= 14)
+            uc += adt*uc_adt + enf*uc_enf
+        return uc
+
+class DesunionSimulation(Simulation):
     """
     A simulation class for a couple that will get separated 
     """
     def __init__(self):
         super(DesunionSimulation, self).__init__()
 
-        self.scenario_chef = None
-        self.scenario_part = None
+        # TODO: changer les noms part et chef
+        self.scenario = None
+        self.scenario_seuls = None
+        self.scenario_chef = None # scenario_chef est donc un attribut de la classe DesunionSimulation
+        self.scenario_part = None # idem
+        self.scenario_chef_seul = None
+        self.scenario_part_seul = None
 
         self.pension_alimentaire = None
         self.children = dict() # {noi: {'non_custodian': None, 'temps_garde': None, 'pension_alim': None}
@@ -45,43 +111,149 @@ class DesunionSimulation(ScenarioSimulation):
         # garde_réduite
 
         self.new_households = dict() # For example { 'chef': { 'so': 1, 'loyer' : 500}}
+        self.uc = dict()
+        
+        self.nmen = None
+        self.maxrev = None
+        
+    def set_config(self, **kwargs):
+        """
+        Configures the ScenarioSimulation
+        
+        Parameters
+        ----------
+        scenario : a Scenario instance. By default, None selects Scenario()
+        country  : a string containing the name of the country
+        param_file : the socio-fiscal parameters file
+        totaux_file : the totaux file
+        xaxis : the revenue category along which revenue varies
+        maxrev : the maximal value of the revenue
+        nmen : the number of different households
+        same_rev_couple : divide the revenue equally between the two partners
+        mode : 'bareme' or 'castype' TODO: change this 
+        """
+        
+        specific_kwargs = self._set_config(**kwargs)
+        self.Scenario = of_import('utils', 'Scenario', country = self.country)
+        
+        if self.scenario is None:
+            try:                
+                self.scenario = kwargs['scenario']
+            except:
+                self.scenario = self.Scenario()
+                self.scenario_seuls = self.Scenario()
+                
+        self.scenario.year = self.datesim.year
+        self.scenario_seuls.year = self.datesim.year
+        
+        for key, val in specific_kwargs.iteritems(): 
+            if hasattr(self, key):
+                setattr(self, key, val)
+        
         
 
     def break_union(self):
+        """
+        Break union    
+        définition d'une méthode qui va changer les attributs d'une instance de Désunion
+        """
 
-        scenario = self.scenario        
-        scenario_chef = Scenario()
-        scenario_part = Scenario()
-        scenario_chef.year = self.datesim.year
-        scenario_part.year = self.datesim.year
-
-        sal_chef = scenario.indiv[0]['sali']   # Could be more general
-        scenario_chef.indiv[0].update({'sali': sal_chef })
+        scenario = self.scenario # ATTRIBUT DE LA CLASSE ScenarioSimulation et 
+        # une INSTANCE de la classe Scenario
+        scenario_chef = self.Scenario()
+        """
+        scenario_chef est donc défini comme une instance de la classe Scenario, une classe d'objet
+        dont l'__init__ n'appelle pas d'autre argument que self. Ce qui est bizarre, 
+        c'est que cette classe Scenario n'apparaît que dans les utils de france.
+        """
+        scenario_seuls = self.Scenario()
+        scenario_part = self.Scenario()
+        scenario_chef_seul = self.Scenario()
+        scenario_part_seul = self.Scenario()
         
+        scenario_chef.year = self.datesim.year
+        '''
+        scenario_chef a un attribut year car toute instance de la classe Scenario peut/ avoir 
+        un tel attribut. On lui donne la valeur de l'attribut year de l'attribut datesim 
+        de DesunionSimulation. Je ne comprends pas bien ces chaînes d'attributs à moins que ce ne soit
+        des sous-classes de classes ??
+        '''
+        for scenar in [ self.scenario_seuls, scenario_chef, scenario_part, 
+                         scenario_chef_seul, scenario_part_seul ]:
+            scenar.year = self.datesim.year
+
+        """
+        datesim est une instance de la classe datetime et c'est aussi un attribut de la classe
+        Simulation. datesim.year est un attribut de l'instance datesim
+        """
+
+        sal_chef = scenario.indiv[0]['sali']   # TODO: Should be more general
+        """
+        ce que je comprends, c'est qu'on va chercher dans notre scenario, instance de Scenario, 
+        l'attribut indiv, qui est un dico de dico, et que l'on cherche le salaire de l'individu 0. 
+        sal_chef aura donc pour valeur celle du salaire de cet individu.
+        """
+        scenario_chef.indiv[0].update({'sali': sal_chef })
+        scenario_chef_seul.indiv[0].update({'sali': sal_chef })
+        """
+        notre scenario_chef, est comme on l'a vu,une instance de la classe Scenario,
+        donc il a comme attribut indiv, un dico de dico. Ici, pour l'individu 0 de ce scenario, 
+        on attribut pour la clé 'sali', la valeur sal_chef précédemment définie        
+        """
         sal_part = scenario.indiv[1]['sali']   # Could be more general
         scenario_part.indiv[0].update({'sali': sal_part })
-        
+        scenario_part_seul.indiv[0].update({'sali': sal_part })
+        """
+        même manip, mais cette fois avec le scenario scenario_part, pour lequel on renseigne la
+        valeur du salaire de l'individu 0, qui était l'individu 1 dans le scenario d'avant
+        la séparation
+        """
         # TODO: get more infos from couple scenario
 
-        noi_enf_part = 1
+        noi_enf_part = 1 
         noi_enf_chef = 1
         alv_chef = 0
         alv_part = 0
         alr_chef = 0
         alr_part = 0
         
-        for noi, val in self.children.iteritems():
+        for noi, val in self.children.iteritems(): 
+            """
+            self.children est un attribut de ScenarioDesunion qui est un dico de dico. Dans ce dico, on a les caractéristiques
+            de l'enfant, dont l'âge, 
+            """
             non_custodian = val['non_custodian']
+            """
+            je définis la valeur non_custodian comme la valeur de la variable qui se trouve en face de la
+            clé 'non_custodian' dans mon dico des enfants, pour l'enfant noi. cette variable peut prendre 
+            pour valeur 'chef' ou 'part'
+            """
             temps_garde = val['temps_garde']
             pension_alim = val['pension_alim']
+            """
+            Ici on raisonne sur le temps de garde dont bénéficie le parent non gardien et sur le montant de la pension
+            qu'il paye pour l'enfant en question
+            """
             birth = scenario.indiv[noi]['birth']
+            """
+            ici, on cherche à récupérer la date de naissance des enfants, qui se trouve dans 
+            le dictionnaire des individus de notre scenario de Scenario
+            """
 
 
-            if temps_garde in ['classique', 'réduite']:
+            if temps_garde in ['classique', 'reduite']:
 
                 if non_custodian == 'chef':
                     scenario_part.addIndiv(noi_enf_part, birth, 'pac', 'enf') 
+                    """
+                    addIndiv est une méthode de la classe Scenario dont scenario_part est
+                    une instance. Ici, on ajoute un enfant au scenario_part puisque c'est l'ex
+                    partenaire du couple avant séparation qui a la garde.
+                    """
                     noi_enf_part += 1
+                    """
+                    on prépare l'itération suivante de la boucle qui commence à for noi, val
+                    """
                     alv_chef += pension_alim
                     alr_part += pension_alim
                 elif non_custodian == 'part':
@@ -90,14 +262,38 @@ class DesunionSimulation(ScenarioSimulation):
                     alv_part += pension_alim
                     alr_chef += pension_alim  
                 
-            elif temps_garde == 'alternée':# TODO: garde alternée pas de pension alimentaire ?
-                                            # garde alternée juridique ou pas
-                
-                scenario_part.addIndiv(noi_enf_part, birth, 'pac', 'enf') 
+            elif temps_garde == 'alternee':# garde alternée fiscale = pas de pension alimentaire
+                """
+                ici, on raisonne en termes fiscaux. La garde alternée se définit par le partage du quotient familial d'où l'ajout 
+                d'une personne à charge pour les deux parents et a priori, par l'absence de pension alimentaire. A vérifier, mais
+                 il semble bien qu'on ne puisse à la fois bénéficier du partage du QF et de la déduction de la pension 
+                 alimentaire du revenu imposable pour celui qui la verse
+                """
+                scenario_part.addIndiv(noi_enf_part, birth, 'pac', 'enf')
+                scenario_part.indiv[noi_enf_part].update('alt', 1)
                 noi_enf_part += 1
+                
                 scenario_chef.addIndiv(noi_enf_chef, birth, 'pac', 'enf')
+                scenario_chef.indiv[noi_enf_part].update('alt', 1)
+                noi_enf_chef += 1
+                
+            elif temps_garde == 'alternee juridique':# TODO: garde alternée pas de pension alimentaire ?
+                                            # garde alternée juridique ou pas
+                """
+                ??? ATTENTION : ici, on traite le cas où les ex conjoints décident de déclarer une pension alimentaire. Donc a priori
+                on ne doit pas avoir de 'alt' dans l'expression ci-dessous. Il faut que l'on distingue trois cas dans le cas de 
+                la garde alternée : un cas où il n'y a effectivement pas de pension versée pour les enfants. Un cas où une pension est
+                versée mais non déclarée car les ex parents décident de se partager la pension le QF. Un cas où une pension est versée
+                et où les parents décident de ne pas se partager le QF mais de déclarer la pension dans la déclaration d'impôt
+                """
+                scenario_part.addIndiv(noi_enf_part, birth, 'pac', 'enf')
+                scenario_part.indiv[noi_enf_part].update('alt', 1)
                 noi_enf_part += 1
                 
+                scenario_chef.addIndiv(noi_enf_chef, birth, 'pac', 'enf')
+                scenario_chef.indiv[noi_enf_part].update('alt', 1)
+                noi_enf_chef += 1
+                # TODO: modify here
                 if non_custodian == 'chef':
                     alv_chef += pension_alim
                     alr_part += pension_alim    
@@ -112,8 +308,8 @@ class DesunionSimulation(ScenarioSimulation):
         # Beware : received pension alim. are attributed for individuals
         #          paid pension alim. are "charges déductibes" on foyers' declarations  
             alv_net_chef = alv_chef - alr_chef
-            if alv_net_chef >= 0:
-                scenario_chef.declar[0].update({'f6gu': alv_net_chef})
+            if alv_net_chef >= 0:   
+                scenario_chef.declar[0].update({'f6gu': alv_net_chef}) # TODO: pas forcément en 6gu 
                 scenario_part.indiv[0].update({'alr': alv_net_chef})
             else:
                 scenario_chef.indiv[0].update({'alr': -alv_net_chef})
@@ -121,21 +317,26 @@ class DesunionSimulation(ScenarioSimulation):
                 
         # Updating households
         
-        for parent, variables in self.new_households:
-            if parent == 'chef':
+        for parent, variables in self.new_households: 
+            if parent == 'chef': # ??? je ne comprends pas trop : parent est une clé du dico new_households ?
                 for key, val in variables:
-                    scenario_chef.menage[0].update({key: val})
+                    scenario_chef.menage[0].update({key: val}) # ???là non plus je ne comprends pas trop comment ça fonctionne
+                    scenario_chef_seul.menage[0].update({key: val})
             elif parent == 'part':
                 for key, val in variables:
                     scenario_part.menage[0].update({key: val})
-                
-        #  
-        # children {noi: ['parent non gardien', temps_de_garde] }, pension_alimentaire 
+                    scenario_part_seul.menage[0].update({key: val})
         
         self.scenario_chef = scenario_chef
         self.scenario_part = scenario_part
-        self.scenario_chef.nmen = 1
-        self.scenario_part.nmen = 1
+        self.scenario_chef.nmen = 1 # ???
+        self.scenario_part.nmen = 1 # ???
+        self.scenario_chef_seul = scenario_chef_seul
+        self.scenario_part_seul = scenario_part_seul
+        self.scenario_chef_seul.nmen = 1 # ???
+        self.scenario_part_seul.nmen = 1 # ???
+        
+        
         
     def set_children(self, children):
         """
@@ -148,7 +349,6 @@ class DesunionSimulation(ScenarioSimulation):
                     'temps_garde': 'classique', 'pension_alim' : 1000}}
          
         """ 
-        self.children = dict()
         noi = 2
         for name, vars_dict in children.iteritems():
             self.children[noi] = vars_dict
@@ -156,9 +356,9 @@ class DesunionSimulation(ScenarioSimulation):
             noi += 1
          
 
-    def create_united_couple(self, sal_chef, sal_part, date = None):
+    def create_couple(self, sal_chef, sal_part, date = None):
         '''
-        Creates the united couple
+        Creates the united couples with and without children
         
         Parameters
         ----------
@@ -171,53 +371,79 @@ class DesunionSimulation(ScenarioSimulation):
         '''
          
         scenario = self.scenario
+        scenario_seuls = self.scenario_seuls
+        
         scenario.addIndiv(1, datetime.strptime("1975-01-01" ,"%Y-%m-%d").date(), "conj", "part")
+        scenario_seuls.addIndiv(1, datetime.strptime("1975-01-01" ,"%Y-%m-%d").date(), "conj", "part")
             
-        i = 2
-        for child in self.children.values():
-            scenario.addIndiv(i, child['birth'], "pac", "enf" )   # , "pac" + str(i-1), "enf" + str(i-1))
-            i += 1 
+        for noi, child in self.children.iteritems():
+            scenario.addIndiv(noi, child['birth'], "pac", "enf" )  
         
         scenario.indiv[0].update({ 'sali': sal_chef })
+        scenario_seuls.indiv[0].update({ 'sali': sal_chef })
         scenario.indiv[1].update({ 'sali': sal_part})
-    
+        scenario_seuls.indiv[1].update({ 'sali': sal_part})
+        
+        
 
-    def compute(self, difference):
+    def _compute(self, difference):
         """
         Computes data_dict  from scenari
         """
-        from src.core.datatable import DataTable
-        from src.core.simulation import ScenarioSimulation
         
-        
-        scenari = { 'couple' : self.scenario, 
-                    'chef'   : self.scenario_chef, 
-                    'part'   : self.scenario_part }
+        scenari = { 'couple' : self.scenario, # ??? ici on aurait pu écrire juste scenario ou bien s'agissait-il
+                   # d'une variable locale valable uniquement dans la définition de la méthode
+                   # create_couple
+                   'couple_seul' : self.scenario_seuls, 
+                    'chef'   : self.scenario_chef,
+                    'part'   : self.scenario_part,
+                    'chef_seul'  : self.scenario_chef_seul,
+                    'part_seul' : self.scenario_part_seul}
         datas = dict()
 
         for name, scenario in scenari.iteritems():
-            print name
-            print self.datesim
             simu = ScenarioSimulation()
             simu.set_config(year = self.datesim.year, scenario = scenario, 
                             country = self.country,
                             totaux_file = self.totaux_file, 
                             nmen = self.nmen, 
                             maxrev = self.maxrev)
-            simu.set_param()
+            simu.set_param(self.P, self.P_default)
+
         
             data, data_default = simu.compute(difference)
             datas[name] = {'data' : data, 'default': data_default}
 
         return datas
     
-    
+    def _compute_uc(self):
+        """
+        Compute uc for every household
+        """
+        self.uc = dict()
+        scenari = { 'couple' : self.scenario, 
+                    'couple_seul' : self.scenario_seuls,
+                    'chef'   : self.scenario_chef, 
+                    'part'   : self.scenario_part,
+                    'chef_seul' : self.scenario_chef_seul,
+                    'part_seul' : self.scenario_part_seul
+                    }
+
+        for name, scenario in scenari.iteritems():
+            age = dict()
+            for noi, var in scenario.indiv.iteritems():
+                age[noi] = int((self.datesim - var['birth']).days/365.25)
+
+            self.uc[name]= _uc(age) # la clé name dans uc[name] renvoie aux sous scenario couple, part et chef etc 
+        
     def get_results_dataframe(self, default = False, difference = True, index_by_code = False):
         '''
         Formats data into a dataframe
         '''
-        from pandas import DataFrame
-        datas = self.compute(difference = difference)
+
+        datas = self._compute(difference)
+        self._compute_uc()
+        uc = self.uc
         dfs = dict()
         
         for scenario, dico in datas.iteritems():
@@ -232,18 +458,23 @@ class DesunionSimulation(ScenarioSimulation):
             
             for row in data:
                 if not row.desc in ('root'):
+                    if row.code == 'revdisp':
+                        revdisp = row.vals
                     if index_by_code is True:
                         index.append(row.code)
                         data_dict[row.code] = row.vals
                     else:
                         index.append(row.desc)
                         data_dict[row.desc] = row.vals
-                    
+            
+
             df = DataFrame(data_dict).T
             df = df.reindex(index)
             df = df.rename(columns = {0: scenario})
-            
+            nivvie = revdisp/uc[scenario] # TODO: include savings !!
+            df = df.set_value('nivvie', scenario, nivvie)
             dfs[scenario] = df
+            
         
         first = True
 
@@ -253,18 +484,91 @@ class DesunionSimulation(ScenarioSimulation):
                 first = False
             else:
                 df_final = concat([df_final, df], axis=1, join ="inner")
-                
-        print "final"
-        df_final = df_final
-        print df_final.to_string()
+        
         return df_final
+    
+    
+    def set_pension(self):
+        """
+        Sets pension according to Ministry of Justice
+        """
+        rev_non_custodian = self.scenario.indiv[0]['sali']
+        nb_enf = len(self.children)
+        pension_per_children = total_pension(rev_non_custodian, nb_enf)/nb_enf
+        for child in self.children.itervalues():
+            child['pension_alim'] = pension_per_children
+    
+    def rev_disp(self, pension):
+        for child in  self.children.itervalues():
+            child['pension_alim'] = pension
+        self.break_union()
+       
+        df = self.get_results_dataframe(index_by_code = True)
+        df_revdisp = df.xs('revdisp')
+        df_rev = df.xs('rev_trav') + df.xs('pen') + df.xs('rev_cap_net') 
+        df_etat = df.xs('psoc') + df.xs('ppe') + df.xs('impo')
+    
+        age = dict()
+        for noi, var in self.children.iteritems():
+            age[noi] = int((self.datesim - var['birth']).days/365.25)
+                
+        uc_children = _uc(age, only_kids = True)
+         
+        total_cost_before = (uc_children/self.uc['couple']) * (df_revdisp['couple'])
+        public_cost_before = ( df_etat['couple'] - df_etat['couple_seul'])
+        parent_cost_before = total_cost_before - public_cost_before
+        
+        alpha = 0
+        gamma = 1
+        total_cost_after = ( gamma*uc_children/(1+gamma*uc_children)*df_revdisp['chef'] +
+                             alpha*gamma*uc_children/(1+alpha*gamma*uc_children)*df_revdisp['part'] )
+        public_cost_after = ( df_etat['chef'] - df_etat['chef_seul'] +  
+                               df_etat['part'] - df_etat['part_seul'] )
+        parent_cost_after = total_cost_after - public_cost_after
+        
+        return df_revdisp, df_rev, df_etat, public_cost_before, public_cost_after
+    
+    def diag(self):
+        self.break_union()
+       
+        df = self.get_results_dataframe(index_by_code = True)
+        df_nivvie = df.xs('nivvie')
+        df_revdisp = df.xs('revdisp')
+        df_rev = df.xs('rev_trav') + df.xs('pen') + df.xs('rev_cap_net') 
+        df_public = df.xs('psoc') + df.xs('ppe') + df.xs('impo')
+    
+        age = dict()
+        for noi, var in self.children.iteritems():
+            age[noi] = int((self.datesim - var['birth']).days/365.25)
+                
+        uc_children = _uc(age, only_kids = True)
+         
+        total_cost_before = (uc_children/self.uc['couple']) * (df_revdisp['couple'])
+        public_cost_before = ( df_public['couple'] - df_public['couple_seul'])
+        parent_cost_before = total_cost_before - public_cost_before
+        
+        alpha = 0
+        gamma = 1
+        total_cost_after = ( gamma*uc_children/(1+gamma*uc_children)*df_revdisp['chef'] +
+                             alpha*gamma*uc_children/(1+alpha*gamma*uc_children)*df_revdisp['part'] )
+        
+        public_cost_after_chef = df_public['chef'] - df_public['chef_seul']  
+        public_cost_after_part = df_public['part'] - df_public['part_seul'] 
+        
+        public_cost_after = ( public_cost_after_chef + public_cost_after_part )
+        
+        parent_cost_after = total_cost_after - public_cost_after
+        
+        
+        return ( df_revdisp, df_nivvie, df_rev, df_public, public_cost_before, public_cost_after, parent_cost_before, parent_cost_after,
+                 public_cost_after_chef, public_cost_after_part )
+
 
 if __name__ == '__main__':
 
     
     app = QApplication(sys.argv)
-    win = ApplicationWindow()    
-
+    win = ApplicationWindow()
     country = 'france'
     destination_dir = u"C:/Users/Utilisateur/Dropbox/CAS/Désunions/"    
     yr = 2010
@@ -283,14 +587,25 @@ if __name__ == '__main__':
     sal_chef    = 30000 
     sal_part = 15000
     desunion.set_children(children)
-    desunion.create_united_couple(sal_chef, sal_part)
+    desunion.create_couple(sal_chef, sal_part)
 
     desunion.break_union()     
 
-    df = desunion.get_results_dataframe()
+#    df = desunion.get_results_dataframe(index_by_code = True)
+#    print desunion.scenario
 #    print desunion.scenario_chef
 #    print desunion.scenario_part
-    print df.to_string()
-    df.to_excel(destination_dir + 'file.xlsx', sheet_name='desunion')
+
+
+#    print df.to_string()
+    
+    df1, df2, df3, pub_cost_before, pub_cost_after = desunion.rev_disp(12*500)
+    print df1
+    print df2
+    print df3
+    print pub_cost_before
+    print pub_cost_after
+    
+#    df.to_excel(destination_dir + 'file.xlsx', sheet_name='desunion')
 
     
