@@ -8,7 +8,7 @@ Created on 17 janv. 2013
 '''
 
 COUNTRY = 'france'
-DIR = u"C:/Users/Utilisateur/Dropbox/CAS/Désunions/"    
+DIR = u"C:/Users/Utilisateur/"#Dropbox/CAS/Désunions/"    
 YEAR = 2011
 
 from pandas import DataFrame, concat
