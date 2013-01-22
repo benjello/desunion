@@ -21,7 +21,7 @@ def get_children(e, ea, temps_garde = "classique"):
     children = dict()
     for i in range(1,e+1):
         name = u"enfant " + str(i)
-        children[name] = {'birth' : "2009-01-01", 'temps_garde' : temps_garde, 'non_custodian' : 'chef'}
+        children[name] = {'birth' : "2002-01-01", 'temps_garde' : temps_garde, 'non_custodian' : 'chef'}
     for j in range(e+1,e+ea+1):
         name = u"enfant " + str(j)
         children[name] = {'birth' : "1996-01-01", 'temps_garde' : temps_garde, 'non_custodian' : 'chef'}
@@ -79,12 +79,12 @@ def compute_and_save():
     
     first = True
     
-    for nb_enf in range(1,1+1):
-        for ea in range(0,1+1):            
+    for nb_enf in range(1,3+1):
+        for ea in range(0,2+1):            
             e = nb_enf - ea
-            for temps_garde in ['classique']: #, 'alternee', 'reduite']:
-                for rev_smic_chef in range(2):
-                    for rev_smic_part in range(2):
+            for temps_garde in ['classique', 'alternee_pension_non_decl', 'alternee_pension_decl', 'reduite']:
+                for rev_smic_chef in range(4):
+                    for rev_smic_part in range(4):
                         df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde)
                         if first:
                             df_final = df   
@@ -100,7 +100,7 @@ def test():
     ea = 0
     rev_smic_chef = 1
     rev_smic_part = 1
-    temps_garde ="classique"
+    temps_garde ="alternee_pension_non_decl"
     children =  get_children(e, ea, temps_garde)
     test_case = get_test_case(children, rev_smic_chef, rev_smic_part)
     
@@ -109,15 +109,15 @@ def test():
     print df.to_string()
 
 def test2():
-    e = 1
+    e = 2
     ea = 0
     rev_smic_chef = 1
     rev_smic_part = 1
-    temps_garde ="classique"
+    temps_garde ="alternee_pension_non_decl"
     df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde)
     print df.to_string()
 
 if __name__ == '__main__':
 
-    compute_and_save()
+    test2()
     
