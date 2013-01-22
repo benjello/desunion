@@ -109,7 +109,7 @@ def test():
     print df.to_string()
 
 def test2():
-    e = 1
+    e = 2
     ea = 0
     rev_smic_chef = 1
     rev_smic_part = 1

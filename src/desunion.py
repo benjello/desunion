@@ -567,12 +567,13 @@ class DesunionSimulation(Simulation):
         print self.children
         
         for noi, var in self.children.iteritems():
-            age[noi] = int((self.datesim - var['birth']).days/365.25)
-        if self.children[noi]["temps_garde"] == 'alternee_pension_non_decl':
-            rev_disp_chef = (df_revdisp['chef'] - self.children.iteritemspension_per_children*nb_enf)
-            rev_disp_part = (df_revdisp['part'] + pension_chef)
-            df2 = df2.set_value(u"revdisp", 'chef', rev_disp_chef)
-            df2 = df2.set_value(u"revdisp", 'part', rev_disp_part)
+            if self.children[noi]["temps_garde"] == 'alternee_pension_non_decl':
+                pension_alim_child = var['pension_alim']
+                pension_totale = pension_alim_child*len(self.children)
+                rev_disp_chef = (df_revdisp['chef'] - pension_totale)
+                rev_disp_part = (df_revdisp['part'] + pension_totale)
+                df2 = df2.set_value(u"revdisp", 'chef', rev_disp_chef)
+                df2 = df2.set_value(u"revdisp", 'part', rev_disp_part)
             
         df2 = df2.T
         df2.index.name = u"ménage"
