@@ -82,7 +82,7 @@ def compute_and_save():
     for nb_enf in range(1,3+1):
         for ea in range(0,2+1):            
             e = nb_enf - ea
-            for temps_garde in ['classique', 'alternee', 'reduite']:
+            for temps_garde in ['classique', 'alternee_pension_non_decl', 'alternee_pension_decl', 'reduite']:
                 for rev_smic_chef in range(4):
                     for rev_smic_part in range(4):
                         df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde)
@@ -100,7 +100,7 @@ def test():
     ea = 0
     rev_smic_chef = 1
     rev_smic_part = 1
-    temps_garde ="alternee juridique"
+    temps_garde ="alternee_pension_non_decl"
     children =  get_children(e, ea, temps_garde)
     test_case = get_test_case(children, rev_smic_chef, rev_smic_part)
     
@@ -113,11 +113,11 @@ def test2():
     ea = 0
     rev_smic_chef = 1
     rev_smic_part = 1
-    temps_garde ="classique"
+    temps_garde ="alternee_pension_non_decl"
     df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde)
     print df.to_string()
 
 if __name__ == '__main__':
 
-    test()
+    test2()
     

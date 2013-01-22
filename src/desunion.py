@@ -64,9 +64,11 @@ def total_pension(rev_non_custodian, nb_enf, temps_garde = "classique"):
     elif temps_garde == "reduite":
         pension = rev_net*coef[str(nb_enf)]
         
-    elif temps_garde == "alternee":
+    elif temps_garde == "alternee_pension_non_decl":
         pension = rev_net*coef[str(nb_enf)]/2
-    
+        
+    elif temps_garde == "alternee_pension_decl":
+        pension = rev_net*coef[str(nb_enf)]/2
     
     return pension
 
@@ -217,9 +219,8 @@ class DesunionSimulation(Simulation):
                     alv_part += pension_alim
                     alr_chef += pension_alim  
                
-            elif temps_garde == 'alternee':# garde alternée fiscale = pas de pension alimentaire
+            elif temps_garde == 'alternee_pension_non_decl':# garde alternée fiscale = pas de pension alimentaire déclarée aux impots mais partage du QF
                 scenario_part.addIndiv(noi_enf_part, birth, 'pac', 'enf')
-                print scenario_part.indiv[noi_enf_part]
                 scenario_part.indiv[noi_enf_part].update({'alt': 1})
                 noi_enf_part += 1
                 
@@ -227,23 +228,19 @@ class DesunionSimulation(Simulation):
                 scenario_chef.indiv[noi_enf_chef].update({'alt': 1})
                 noi_enf_chef += 1
                 
-            elif temps_garde == 'alternee juridique':# TODO: garde alternée pas de pension alimentaire ?
+            elif temps_garde == 'alternee_pension_decl':# TODO: garde alternée pas de pension alimentaire ?
                                             # garde alternée juridique ou pas
 
-                scenario_part.addIndiv(noi_enf_part, birth, 'pac', 'enf')
-                scenario_part.indiv[noi_enf_part].update({'alt': 1})
-                noi_enf_part += 1
-                
-                scenario_chef.addIndiv(noi_enf_chef, birth, 'pac', 'enf')
-                scenario_chef.indiv[noi_enf_chef].update({'alt': 1})
-                noi_enf_chef += 1
-                # TODO: modify here
                 if non_custodian == 'chef':
+                    scenario_part.addIndiv(noi_enf_part, birth, 'pac', 'enf')
+                    noi_enf_part += 1
                     alv_chef += pension_alim
-                    alr_part += pension_alim    
+                    alr_part += pension_alim
                 elif non_custodian == 'part':
+                    scenario_chef.addIndiv(noi_enf_chef, birth, 'pac', 'enf') 
+                    noi_enf_chef += 1
                     alv_part += pension_alim
-                    alr_chef += pension_alim
+                    alr_chef += pension_alim 
                     
             else:
                 raise Exception('break_union: Error somewhere')
@@ -567,6 +564,16 @@ class DesunionSimulation(Simulation):
         df2 = df2.set_value(u"pension", 'chef', pension_chef )
         df2 = df2.set_value(u"pension", 'part', pension_part)
         
+        print self.children
+        
+        for noi, var in self.children.iteritems():
+            age[noi] = int((self.datesim - var['birth']).days/365.25)
+        if self.children[noi]["temps_garde"] == 'alternee_pension_non_decl':
+            rev_disp_chef = (df_revdisp['chef'] - self.children.iteritemspension_per_children*nb_enf)
+            rev_disp_part = (df_revdisp['part'] + pension_chef)
+            df2 = df2.set_value(u"revdisp", 'chef', rev_disp_chef)
+            df2 = df2.set_value(u"revdisp", 'part', rev_disp_part)
+            
         df2 = df2.T
         df2.index.name = u"ménage"
         df2 = df2.reset_index() 
@@ -588,18 +595,18 @@ if __name__ == '__main__':
     desunion.set_param()
 
     
-    children =  {'Riri': {'birth': "2000-01-01", 'non_custodian' : 'chef', 
-                    'temps_garde': 'classique', 'pension_alim' : 12*500},
-                 'Fifi': {'birth': "2002-01-01", 'non_custodian' : 'chef', 
-                    'temps_garde': 'classique', 'pension_alim' : 12*500}
-                 }
+#    children =  {'Riri': {'birth': "2000-01-01", 'non_custodian' : 'chef', 
+#                    'temps_garde': 'classique', 'pension_alim' : 12*500},
+#                 'Fifi': {'birth': "2002-01-01", 'non_custodian' : 'chef', 
+#                    'temps_garde': 'classique', 'pension_alim' : 12*500}
+#                 }
 
-    sal_chef    = 30000 
-    sal_part = 15000
-    desunion.set_children(children)
-    desunion.create_couple(sal_chef, sal_part)
-
-    desunion.break_union()     
+#    sal_chef    = 30000 
+#    sal_part = 15000
+#    desunion.set_children(children)
+#    desunion.create_couple(sal_chef, sal_part)
+#
+#    desunion.break_union()     
 
 #    df = desunion.get_results_dataframe(index_by_code = True)
 #    print desunion.scenario
@@ -609,12 +616,12 @@ if __name__ == '__main__':
 
 #    print df.to_string()
     
-    df1, df2, df3, pub_cost_before, pub_cost_after = desunion.rev_disp(12*500)
-    print df1
-    print df2
-    print df3
-    print pub_cost_before
-    print pub_cost_after
+#    df1, df2, df3, pub_cost_before, pub_cost_after = desunion.rev_disp(12*500)
+#    print df1
+#    print df2
+#    print df3
+#    print pub_cost_before
+#    print pub_cost_after
     
 #    df.to_excel(destination_dir + 'file.xlsx', sheet_name='desunion')
 
