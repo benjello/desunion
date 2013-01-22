@@ -216,25 +216,26 @@ class DesunionSimulation(Simulation):
                     noi_enf_chef += 1
                     alv_part += pension_alim
                     alr_chef += pension_alim  
-                
+               
             elif temps_garde == 'alternee':# garde alternée fiscale = pas de pension alimentaire
                 scenario_part.addIndiv(noi_enf_part, birth, 'pac', 'enf')
-                scenario_part.indiv[noi_enf_part].update('alt', 1)
+                print scenario_part.indiv[noi_enf_part]
+                scenario_part.indiv[noi_enf_part].update({'alt': 1})
                 noi_enf_part += 1
                 
                 scenario_chef.addIndiv(noi_enf_chef, birth, 'pac', 'enf')
-                scenario_chef.indiv[noi_enf_part].update('alt', 1)
+                scenario_chef.indiv[noi_enf_chef].update({'alt': 1})
                 noi_enf_chef += 1
                 
             elif temps_garde == 'alternee juridique':# TODO: garde alternée pas de pension alimentaire ?
                                             # garde alternée juridique ou pas
 
                 scenario_part.addIndiv(noi_enf_part, birth, 'pac', 'enf')
-                scenario_part.indiv[noi_enf_part].update('alt', 1)
+                scenario_part.indiv[noi_enf_part].update({'alt': 1})
                 noi_enf_part += 1
                 
                 scenario_chef.addIndiv(noi_enf_chef, birth, 'pac', 'enf')
-                scenario_chef.indiv[noi_enf_part].update('alt', 1)
+                scenario_chef.indiv[noi_enf_chef].update({'alt': 1})
                 noi_enf_chef += 1
                 # TODO: modify here
                 if non_custodian == 'chef':
