@@ -10,7 +10,7 @@ Created on 17 janv. 2013
 
 COUNTRY = 'france'
 DIR = u"C:/Users/Utilisateur/"#Dropbox/CAS/Désunions/"    
-YEAR = 2011
+YEAR = 2009
 
 
 from pandas import DataFrame, concat, Series, ExcelWriter
@@ -43,7 +43,6 @@ def get_test_case(children, sal_chef_smic, sal_part_smic):
     
     desunion.set_pension()
 
-    
     desunion.break_union()
     
     return desunion
@@ -111,8 +110,8 @@ def test():
 def test2():
     e = 2
     ea = 0
-    rev_smic_chef = 1
-    rev_smic_part = 1
+    rev_smic_chef = 0
+    rev_smic_part = 0
     temps_garde ="alternee_pension_non_decl"
     df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde)
     print df.to_string()

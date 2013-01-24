@@ -169,7 +169,6 @@ class DesunionSimulation(Simulation):
 
         scenario = self.scenario
         scenario_chef = self.Scenario()
-        scenario_seuls = self.Scenario()
         scenario_part = self.Scenario()
         scenario_chef_seul = self.Scenario()
         scenario_part_seul = self.Scenario()
@@ -179,6 +178,7 @@ class DesunionSimulation(Simulation):
         for scenar in [ self.scenario_seuls, scenario_chef, scenario_part, 
                          scenario_chef_seul, scenario_part_seul ]:
             scenar.year = self.datesim.year
+            scenar.nmen = 1
 
 
         sal_chef = scenario.indiv[0]['sali']   # TODO: Should be more general
@@ -248,37 +248,51 @@ class DesunionSimulation(Simulation):
         # Updating pension alimentaire
         # Beware : received pension alim. are attributed for individuals
         #          paid pension alim. are "charges déductibes" on foyers' declarations  
-            alv_net_chef = alv_chef - alr_chef
-            if alv_net_chef >= 0:   
-                scenario_chef.declar[0].update({'f6gu': alv_net_chef}) # TODO: pas forcément en 6gu 
-                scenario_part.indiv[0].update({'alr': alv_net_chef})
-            else:
-                scenario_chef.indiv[0].update({'alr': -alv_net_chef})
-                scenario_part.declar[0].update({'f6gu': -alv_net_chef})
+        alv_net_chef = alv_chef - alr_chef
+        if alv_net_chef >= 0:   
+            scenario_chef.declar[0].update({'f6gu': alv_net_chef}) # TODO: pas forcément en 6gu 
+            scenario_part.indiv[0].update({'alr': alv_net_chef})
+        else:
+            scenario_chef.indiv[0].update({'alr': -alv_net_chef})
+            scenario_part.declar[0].update({'f6gu': -alv_net_chef})
+
+        self.scenario_chef = scenario_chef
+        self.scenario_part = scenario_part
+
+        self.scenario_chef_seul = scenario_chef_seul
+        self.scenario_part_seul = scenario_part_seul
 
         # Updating households
+        
+        pension_alim_tot = sum([ var['pension_alim'] for var in self.children.values()])
+        mini_chef, mini_part, mini_part_seul = self.get_mini_broken()
+        
         if housing_non_custodian is None:
-            housing_non_custodian = {'loyer': max(sal_chef - pension_alim,0)/3}
+            
+            housing_non_custodian = {'loyer': max(sal_chef + mini_chef
+                                                  - pension_alim_tot,0)/3/12}
+            housing_non_custodian_seul = {'loyer': max(sal_chef + 
+                                                       mini_chef,0)/3/12}
 
         for key, val in housing_non_custodian.iteritems():
             scenario_chef.menage[0].update({key: val}) 
+
+        for key, val in housing_non_custodian_seul.iteritems():
             scenario_chef_seul.menage[0].update({key: val})
 
         if housing_custodian is None:
-            housing_custodian = {'loyer': max(sal_part + pension_alim,0)/3}
+            
+            housing_custodian = {'loyer': max(sal_part +  mini_part + 
+                                              pension_alim_tot,0)/3/12}
+            housing_custodian_seul = {'loyer': max(sal_part 
+                                                   + mini_part_seul,0)/3/12}
 
         for key, val in housing_custodian.iteritems():
             scenario_part.menage[0].update({key: val})
+            
+        for key, val in housing_custodian_seul.iteritems():
             scenario_part_seul.menage[0].update({key: val})
         
-        self.scenario_chef = scenario_chef
-        self.scenario_part = scenario_part
-        self.scenario_chef.nmen = 1
-        self.scenario_part.nmen = 1
-        self.scenario_chef_seul = scenario_chef_seul
-        self.scenario_part_seul = scenario_part_seul
-        self.scenario_chef_seul.nmen = 1
-        self.scenario_part_seul.nmen = 1
         
         
         
@@ -326,13 +340,77 @@ class DesunionSimulation(Simulation):
         scenario.indiv[1].update({ 'sali': sal_part})
         scenario_seuls.indiv[1].update({ 'sali': sal_part})
         
+        mini_couple, mini_couple_seuls = self.get_mini_couple()
+        
         if housing is None:
-            scenario.menage[0].update({'loyer' : (sal_chef + sal_part)/3})
-            scenario_seuls.menage[0].update({'loyer' : (sal_chef + sal_part)/3})
+            scenario.menage[0].update({'loyer' : (sal_chef + sal_part + mini_couple)/3/12})
+            scenario_seuls.menage[0].update({'loyer' : (sal_chef + sal_part + mini_couple_seuls)/3/12})
         else:
             for key, val in housing.iteritems:
                 scenario.menage[0].update({key: val})
                 scenario_seuls.menage[0].update({key: val})
+        
+    def get_mini_couple(self):
+        """
+        Compute minimas sociaux for the couple
+        """
+        scenari = { 'couple' : self.scenario,
+                   'couple_seul' : self.scenario_seuls, 
+#                    'chef'   : self.scenario_chef,
+#                    'part'   : self.scenario_part,
+#                    'chef_seul'  : self.scenario_chef_seul,
+#                    'part_seul' : self.scenario_part_seul
+                    }
+
+        for name, scenario in scenari.iteritems():
+            simu = ScenarioSimulation()
+            simu.set_config(year = self.datesim.year, scenario = scenario, 
+                            country = self.country,
+                            totaux_file = self.totaux_file, 
+                            nmen = self.nmen, 
+                            maxrev = self.maxrev)
+            simu.set_param(self.P, self.P_default)        
+            data, data_default = simu.compute()
+            if name == 'couple':
+                print data['mini'].vals
+                rsa_couple = data['mini'].vals
+            elif name == "couple_seul":
+                print data['mini'].vals
+                rsa_couple_seul = data['mini'].vals
+                
+        return rsa_couple, rsa_couple_seul
+        
+    def get_mini_broken(self):
+        """
+        Compute minimas sociaux for the couple
+        """
+        scenari = { 'part'   : self.scenario_part,
+                    'chef_seul'  : self.scenario_chef_seul,
+                    'part_seul' : self.scenario_part_seul
+                    }
+
+        for name, scenario in scenari.iteritems():
+            simu = ScenarioSimulation()
+            simu.set_config(year = self.datesim.year, scenario = scenario, 
+                            country = self.country,
+                            totaux_file = self.totaux_file, 
+                            nmen = self.nmen, 
+                            maxrev = self.maxrev)
+            simu.set_param(self.P, self.P_default)        
+            data, data_default = simu.compute()
+            if name == 'part':
+                print data['mini'].vals
+                rsa_part = data['mini'].vals
+            elif name == "chef_seul":
+                print data['mini'].vals
+                rsa_chef_seul = data['mini'].vals
+            elif name == "part_seul":
+                print data['mini'].vals
+                rsa_part_seul = data['mini'].vals    
+        
+        return rsa_chef_seul, rsa_part, rsa_part_seul 
+        
+        
         
     def _compute(self, difference):
         """
@@ -442,83 +520,24 @@ class DesunionSimulation(Simulation):
         """
         rev_non_custodian = self.scenario.indiv[0]['sali']
         nb_enf = len(self.children)
-        pension_per_children = total_pension(rev_non_custodian, nb_enf)/nb_enf
+        noi = self.children.keys()[0]
+        temps_garde = self.children[noi]['temps_garde']
+        pension_per_children = total_pension(rev_non_custodian, 
+                                             nb_enf, 
+                                             temps_garde=temps_garde)/nb_enf
         for child in self.children.itervalues():
             child['pension_alim'] = pension_per_children
     
-    def rev_disp(self, pension):
-        for child in  self.children.itervalues():
-            child['pension_alim'] = pension
-        self.break_union()
-       
-        df = self.get_results_dataframe(index_by_code = True)
-        df_revdisp = df.xs('revdisp')
-        df_rev = df.xs('rev_trav') + df.xs('pen') + df.xs('rev_cap_net') 
-        df_etat = df.xs('psoc') + df.xs('ppe') + df.xs('impo')
     
-        age = dict()
-        for noi, var in self.children.iteritems():
-            age[noi] = int((self.datesim - var['birth']).days/365.25)
-                
-        uc_children = _uc(age, only_kids = True)
-         
-        total_cost_before = (uc_children/self.uc['couple']) * (df_revdisp['couple'])
-        public_cost_before = ( df_etat['couple'] - df_etat['couple_seul'])
-        parent_cost_before = total_cost_before - public_cost_before
-        
-        alpha = 0
-        gamma = 1
-        total_cost_after = ( gamma*uc_children/(1+gamma*uc_children)*df_revdisp['chef'] +
-                             alpha*gamma*uc_children/(1+alpha*gamma*uc_children)*df_revdisp['part'] )
-        public_cost_after = ( df_etat['chef'] - df_etat['chef_seul'] +  
-                               df_etat['part'] - df_etat['part_seul'] )
-        parent_cost_after = total_cost_after - public_cost_after
-        
-        return df_revdisp, df_rev, df_etat, public_cost_before, public_cost_after
-    
-    def diag_old(self):
-        self.break_union()
-       
-        df = self.get_results_dataframe(index_by_code = True)
-        df_nivvie = df.xs('nivvie')
-        df_revdisp = df.xs('revdisp')
-        df_rev = df.xs('rev_trav') + df.xs('pen') + df.xs('rev_cap_net') 
-        df_public = df.xs('psoc') + df.xs('ppe') + df.xs('impo')
-    
-        age = dict()
-        for noi, var in self.children.iteritems():
-            age[noi] = int((self.datesim - var['birth']).days/365.25)
-                
-        uc_children = _uc(age, only_kids = True)
-         
-        total_cost_before = (uc_children/self.uc['couple']) * (df_revdisp['couple'])
-        public_cost_before = ( df_public['couple'] - df_public['couple_seul'])
-        parent_cost_before = total_cost_before - public_cost_before
-        
-        alpha = 0
-        gamma = 1
-        total_cost_after = ( gamma*uc_children/(1+gamma*uc_children)*df_revdisp['chef'] +
-                             alpha*gamma*uc_children/(1+alpha*gamma*uc_children)*df_revdisp['part'] )
-        
-        public_cost_after_chef = df_public['chef'] - df_public['chef_seul']  
-        public_cost_after_part = df_public['part'] - df_public['part_seul'] 
-        
-        public_cost_after = ( public_cost_after_chef + public_cost_after_part )
-        
-        parent_cost_after = total_cost_after - public_cost_after
-        
-        
-        return ( df_revdisp, df_nivvie, df_rev, df_public, public_cost_before, public_cost_after, parent_cost_before, parent_cost_after,
-                 public_cost_after_chef, public_cost_after_part )
 
     def diag(self):
-        self.break_union()
        
         df = self.get_results_dataframe(index_by_code = True)
         df_nivvie = df.xs('nivvie')
         df_revdisp = df.xs('revdisp')
         df_rev = df.xs('rev_trav') + df.xs('pen') + df.xs('rev_cap_net') 
         
+        df_af = df.xs('af')
         df_pfam = df.xs('pfam') 
         df_mini = df.xs('mini')
         df_logt = df.xs('logt')
@@ -526,30 +545,53 @@ class DesunionSimulation(Simulation):
         df_impo.name = "impo+ppe"
         df_public = df.xs('psoc') + df.xs('ppe') + df.xs('impo')
         
-        pension_chef = df.xs('alv')['chef']
-        pension_part = df.xs('alr')['part']
+        loyer_chef = self.scenario_chef_seul.menage[0]['loyer']
+        
+        noi = self.children.keys()[0]
+        if self.children[noi]["temps_garde"] == 'alternee_pension_non_decl':
+            pension_alim_tot = sum([ var['pension_alim'] for var in self.children.values()])
+            
+            df_revdisp['chef'] = ( df_rev['chef'] + df_mini['chef_seul'] + 
+                                   df_af['part']/2 + 
+                                   df_logt['chef_seul'] - pension_alim_tot +
+                                   df_impo['chef'] )
+            df_pfam['chef'] = df_af['part']/2
+            df_logt['chef'] = df_logt['chef_seul']
+            df_mini['chef']  = df_mini['chef_seul']
+            df_public['chef'] = ( df_logt['chef_seul'] + df_mini['chef_seul']+ 
+                                  df_pfam['chef'] + df_impo['chef'] )
+
+            
+            df_revdisp['part'] = ( df_revdisp['part'] - df_af['part']/2 + 
+                                   pension_alim_tot )
+            df_pfam['part'] -= df_af['part']/2
+            df_public['part'] = ( df_logt['part'] + df_mini['part']+ 
+                                  df_pfam['part'] + df_impo['part'] )
+
+        
+        
         
         age = dict()
         for noi, var in self.children.iteritems():
             age[noi] = int((self.datesim - var['birth']).days/365.25)
                 
-        uc_children = _uc(age, only_kids = True)
+#        uc_children = _uc(age, only_kids = True)
          
-        total_cost_before = (uc_children/self.uc['couple']) * (df_revdisp['couple'])
+#        total_cost_before = (uc_children/self.uc['couple']) * (df_revdisp['couple'])
         public_cost_before = ( df_public['couple'] - df_public['couple_seul'])
-        parent_cost_before = total_cost_before - public_cost_before
+#        parent_cost_before = total_cost_before - public_cost_before
         
-        alpha = 0
-        gamma = 1
-        total_cost_after = ( gamma*uc_children/(1+gamma*uc_children)*df_revdisp['chef'] +
-                             alpha*gamma*uc_children/(1+alpha*gamma*uc_children)*df_revdisp['part'] )
+#        alpha = 0
+#        gamma = 1
+#        total_cost_after = ( gamma*uc_children/(1+gamma*uc_children)*df_revdisp['chef'] +
+#                             alpha*gamma*uc_children/(1+alpha*gamma*uc_children)*df_revdisp['part'] )
         
         public_cost_after_chef = df_public['chef'] - df_public['chef_seul']  
         public_cost_after_part = df_public['part'] - df_public['part_seul'] 
         
-        public_cost_after = ( public_cost_after_chef + public_cost_after_part )
+        # public_cost_after = ( public_cost_after_chef + public_cost_after_part )
         
-        parent_cost_after = total_cost_after - public_cost_after
+        # parent_cost_after = total_cost_after - public_cost_after
         
 
         df2 = DataFrame( [df_revdisp, df_pfam, df_mini, df_logt, df_impo, df_nivvie])
@@ -557,23 +599,14 @@ class DesunionSimulation(Simulation):
         df2 = df2.set_value(u"prise en charge publique de l'enfant", 'couple', public_cost_before)
         df2 = df2.set_value(u"prise en charge publique de l'enfant", 'chef', public_cost_after_chef)
         df2 = df2.set_value(u"prise en charge publique de l'enfant", 'part', public_cost_after_part)
-        df2 = df2.set_value(u"loyer", 'couple', self.scenario.menage[0]['loyer'])    
-        df2 = df2.set_value(u"loyer", 'chef', self.scenario_chef.menage[0]['loyer'])
-        df2 = df2.set_value(u"loyer", 'part', self.scenario_part.menage[0]['loyer'])
+        df2 = df2.set_value(u"loyer", 'couple', 12*self.scenario.menage[0]['loyer'])    
+        df2 = df2.set_value(u"loyer", 'chef', 12*loyer_chef)
+        df2 = df2.set_value(u"loyer", 'part', 12*self.scenario_part.menage[0]['loyer'])
         df2 = df2.set_value(u"pension", 'couple', 0)    
-        df2 = df2.set_value(u"pension", 'chef', pension_chef )
-        df2 = df2.set_value(u"pension", 'part', pension_part)
+        df2 = df2.set_value(u"pension", 'chef', pension_alim_tot )
+        df2 = df2.set_value(u"pension", 'part', -pension_alim_tot)
         
-        print self.children
         
-        for noi, var in self.children.iteritems():
-            if self.children[noi]["temps_garde"] == 'alternee_pension_non_decl':
-                pension_alim_child = var['pension_alim']
-                pension_totale = pension_alim_child*len(self.children)
-                rev_disp_chef = (df_revdisp['chef'] - pension_totale)
-                rev_disp_part = (df_revdisp['part'] + pension_totale)
-                df2 = df2.set_value(u"revdisp", 'chef', rev_disp_chef)
-                df2 = df2.set_value(u"revdisp", 'part', rev_disp_part)
             
         df2 = df2.T
         df2.index.name = u"ménage"
@@ -584,46 +617,4 @@ class DesunionSimulation(Simulation):
 
 if __name__ == '__main__':
 
-    
-    app = QApplication(sys.argv)
-    win = ApplicationWindow()
-    country = 'france'
-    destination_dir = u"C:/Users/Utilisateur/Dropbox/CAS/Désunions/"    
-    yr = 2010
-
-    desunion = DesunionSimulation()
-    desunion.set_config(nmen = 1, year = yr)
-    desunion.set_param()
-
-    
-#    children =  {'Riri': {'birth': "2000-01-01", 'non_custodian' : 'chef', 
-#                    'temps_garde': 'classique', 'pension_alim' : 12*500},
-#                 'Fifi': {'birth': "2002-01-01", 'non_custodian' : 'chef', 
-#                    'temps_garde': 'classique', 'pension_alim' : 12*500}
-#                 }
-
-#    sal_chef    = 30000 
-#    sal_part = 15000
-#    desunion.set_children(children)
-#    desunion.create_couple(sal_chef, sal_part)
-#
-#    desunion.break_union()     
-
-#    df = desunion.get_results_dataframe(index_by_code = True)
-#    print desunion.scenario
-#    print desunion.scenario_chef
-#    print desunion.scenario_part
-
-
-#    print df.to_string()
-    
-#    df1, df2, df3, pub_cost_before, pub_cost_after = desunion.rev_disp(12*500)
-#    print df1
-#    print df2
-#    print df3
-#    print pub_cost_before
-#    print pub_cost_after
-    
-#    df.to_excel(destination_dir + 'file.xlsx', sheet_name='desunion')
-
-    
+    pass
