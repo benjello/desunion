@@ -13,7 +13,8 @@ def uc(a = 1, e=0, ea=0, alpha=0, e_ng=0):
     # ea : nombre d'enfants de plus de 14 ans, assimilés à des adultes
     # e  : nombre d'enfants
     a = a + ea
-    return (1 + .5*(a-1) + .3*e + alpha*e_ng)
+    monop = (a==1)
+    return (1 + .5*(a-1) + .3*(e + alpha*e_ng)*( 1*(!nomonp) + gamma*monop )   )
 
 def cenf(a = 1, e=0, ea=0, alpha=0, e_ng=0):
     # Coût des enfants (en proportion du revenu du ménage)

@@ -12,6 +12,10 @@ COUNTRY = 'france'
 DIR = u"C:/Users/Utilisateur/"#Dropbox/CAS/Désunions/"    
 YEAR = 2009
 
+"""
+TODO: parent isolé
+"""
+
 
 from pandas import DataFrame, concat, Series, ExcelWriter
 from desunion import DesunionSimulation
@@ -28,7 +32,7 @@ def get_children(e, ea, temps_garde = "classique"):
     return children
 
 
-def get_test_case(children, sal_chef_smic, sal_part_smic):
+def get_test_case(children, sal_chef_smic, sal_part_smic, uc_parameters = None):
     
     desunion = DesunionSimulation()
     desunion.set_config(nmen = 1, year = YEAR)
@@ -38,22 +42,21 @@ def get_test_case(children, sal_chef_smic, sal_part_smic):
     sal_part = sal_part_smic*1072*12
     
     desunion.set_children(children)
-
-    desunion.create_couple(sal_chef, sal_part)
-    
+        
+    desunion.create_couple(sal_chef, sal_part)    
     desunion.set_pension()
-
     desunion.break_union()
+    if uc_parameters is not None:    
+        desunion.set_uc_parameters(uc_parameters)
     
     return desunion
 
 
 
 
-def get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde = "classique" ):
+def get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde = "classique", uc_parameters = None):
     children =  get_children(e, ea, temps_garde)
-    test_case = get_test_case(children, rev_smic_chef, rev_smic_part)
-
+    test_case = get_test_case(children, rev_smic_chef, rev_smic_part, uc_parameters = uc_parameters)
     df = test_case.diag()
 
     from numpy import ones
@@ -110,10 +113,11 @@ def test():
 def test2():
     e = 2
     ea = 0
-    rev_smic_chef = 0
-    rev_smic_part = 0
+    rev_smic_chef = 3
+    rev_smic_part = 3
     temps_garde ="alternee_pension_non_decl"
-    df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde)
+    uc_parameters = {'alpha' : 0, 'beta' : .75, 'gamma' : 1}
+    df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters)
     print df.to_string()
 
 if __name__ == '__main__':

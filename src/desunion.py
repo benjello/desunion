@@ -72,24 +72,92 @@ def total_pension(rev_non_custodian, nb_enf, temps_garde = "classique"):
     
     return pension
 
-def _uc(age, only_kids = False):
-        '''
-        Calcule le nombre d'unités de consommation du ménage avec l'échelle de l'insee
-        à partir des age en mois des individus
-        ??? AGE EN ANNEE PLUTOT NON ? 
-        '''
 
-        uc_adt = 0.5
-        uc_enf = 0.3
-        uc = 0.5
-        if only_kids:
-            uc = 0
-             
-        for ag in age.itervalues():
-            adt = (15 <= ag) & (ag <= 150)
-            enf = (0  <= ag) & (ag <= 14)
-            uc += adt*uc_adt + enf*uc_enf
-        return uc
+def _uc_couple(age, only_kids = False):
+    """
+    Compute the consuption units using the INSEE scale for couples
+     
+    Parameters
+    ----------
+    age : list
+    only_kids: bool
+    """
+    uc_adt = 0.5
+    uc_enf = 0.3
+    uc = .5
+    if only_kids:
+        uc = 0
+    
+    for ag in age:        
+        adt = ( (15 <= ag) & (ag <= 150))
+        enf = (0  <= ag) & (ag <= 14)
+        uc += adt*uc_adt + enf*uc_enf
+    
+    return uc - only_kids*uc_adt*2
+        
+    
+def _uc_nc(age, alt = False, only_kids = False, alpha = 0, beta = .5):
+    """
+    Compute the consuption units using the INSEE scale for the non custodian parent
+     
+    Parameters
+    ----------
+    alpha : float
+            likely < 1, factor multiplying the chidlren uc for the non_custodian parent
+    beta  : float
+            factor multiplying the children uc for alternate custody    
+    """
+    if not alt:
+        uc_adt = 0.5*alpha
+        uc_enf = 0.3*alpha
+    else:
+        uc_adt = 0.5*beta
+        uc_enf = 0.3*beta
+    
+    uc = 1
+    if only_kids:
+        uc = 0
+        
+    for ag in age:        
+        adt = ( (15 <= ag) & (ag <= 150))
+        enf = (0  <= ag) & (ag <= 14)
+        uc += adt*uc_adt + enf*uc_enf
+        print adt, enf, uc
+    
+    return uc - uc_adt
+    
+def _uc_c(age, alt = False , only_kids = False, gamma = 1, beta = .5):
+    """
+    Compute the consuption units using the INSEE scale for the custodian parent
+     
+    Parameters
+    ----------
+    beta  : float
+            factor multiplying the children uc for alternate custody 
+        
+    gamma : float
+            factor multiplying the children uc for single parent household
+    """
+
+    if not alt:
+        uc_adt = 0.5*gamma
+        uc_enf = 0.3*gamma
+    else:
+        uc_adt = 0.5*beta
+        uc_enf = 0.3*beta
+
+    
+    uc = 1
+    if only_kids:
+        uc = 0
+        
+    for ag in age:        
+        adt = ( (15 <= ag) & (ag <= 150))
+        enf = (0  <= ag) & (ag <= 14)
+        uc += adt*uc_adt + enf*uc_enf
+    
+    return uc - uc_adt
+
 
 class DesunionSimulation(Simulation):
     """
@@ -117,6 +185,15 @@ class DesunionSimulation(Simulation):
         
         self.nmen = None
         self.maxrev = None
+        self.uc_parameters = dict(alpha = 0, beta = .5, gamma = 1) # TODO: define here alpha etc
+    
+    
+    def set_uc_parameters(self, parameters):
+        """
+        Set the standard of living parameters
+        """
+        for key, val in parameters.iteritems():
+            self.uc_parameters[key] = val
         
     def set_config(self, **kwargs):
         """
@@ -221,12 +298,17 @@ class DesunionSimulation(Simulation):
                
             elif temps_garde == 'alternee_pension_non_decl':# garde alternée fiscale = pas de pension alimentaire déclarée aux impots mais partage du QF
                 scenario_part.addIndiv(noi_enf_part, birth, 'pac', 'enf')
-                scenario_part.indiv[noi_enf_part].update({'alt': 1})
+                scenario_part.indiv[noi_enf_part].update({'alt': 1, 'quimen': 'enf'+str(noi_enf_part)})
+                
                 noi_enf_part += 1
+                print 'part'
+                print scenario_part
                 
                 scenario_chef.addIndiv(noi_enf_chef, birth, 'pac', 'enf')
                 scenario_chef.indiv[noi_enf_chef].update({'alt': 1})
                 noi_enf_chef += 1
+                print 'chef'
+                print scenario_chef
                 
             elif temps_garde == 'alternee_pension_decl':# TODO: garde alternée pas de pension alimentaire ?
                                             # garde alternée juridique ou pas
@@ -293,8 +375,9 @@ class DesunionSimulation(Simulation):
         for key, val in housing_custodian_seul.iteritems():
             scenario_part_seul.menage[0].update({key: val})
         
-        
-        
+        for scenar in [ self.scenario, self.scenario_seuls, scenario_chef, scenario_part, 
+                         scenario_chef_seul, scenario_part_seul ]:
+            scenar.genNbEnf()
         
     def set_children(self, children):
         """
@@ -372,10 +455,8 @@ class DesunionSimulation(Simulation):
             simu.set_param(self.P, self.P_default)        
             data, data_default = simu.compute()
             if name == 'couple':
-                print data['mini'].vals
                 rsa_couple = data['mini'].vals
             elif name == "couple_seul":
-                print data['mini'].vals
                 rsa_couple_seul = data['mini'].vals
                 
         return rsa_couple, rsa_couple_seul
@@ -399,13 +480,10 @@ class DesunionSimulation(Simulation):
             simu.set_param(self.P, self.P_default)        
             data, data_default = simu.compute()
             if name == 'part':
-                print data['mini'].vals
                 rsa_part = data['mini'].vals
             elif name == "chef_seul":
-                print data['mini'].vals
                 rsa_chef_seul = data['mini'].vals
             elif name == "part_seul":
-                print data['mini'].vals
                 rsa_part_seul = data['mini'].vals    
         
         return rsa_chef_seul, rsa_part, rsa_part_seul 
@@ -446,6 +524,10 @@ class DesunionSimulation(Simulation):
         """
         Compute uc for every household
         """
+        
+        alpha = self.uc_parameters['alpha']
+        beta = self.uc_parameters['beta']
+        gamma = self.uc_parameters['gamma']
         self.uc = dict()
         scenari = { 'couple' : self.scenario, 
                     'couple_seul' : self.scenario_seuls,
@@ -455,12 +537,41 @@ class DesunionSimulation(Simulation):
                     'part_seul' : self.scenario_part_seul
                     }
 
+        alt = (self.get_temps_garde() in ['alternee_pension_decl', 'alternee_pension_non_decl'])
+        print 'temps_garde :', self.get_temps_garde()
+        print 'alternee :', alt
         for name, scenario in scenari.iteritems():
             age = dict()
-            for noi, var in scenario.indiv.iteritems():
+            for noi, var in scenario.indiv.iteritems():   
                 age[noi] = int((self.datesim - var['birth']).days/365.25)
-
-            self.uc[name]= _uc(age) # la clé name dans uc[name] renvoie aux sous scenario couple, part et chef etc 
+            
+            if name in ['couple', 'couple_seul']:
+                self.uc[name] = _uc_couple(age.values())
+            
+            elif name in ['chef_seul', 'part_seul']:
+                self.uc[name] = _uc_c(age.values())
+            
+            elif name == 'chef':
+                if (self.get_temps_garde() not in ['alternee_pension_non_decl']): # When children are missing in scenario_chef
+                    for var in self.children.values():
+                        noi = noi + 1
+                        age[noi] = int((self.datesim - var['birth']).days/365.25)
+                                    
+                self.uc[name] =  _uc_nc(age.values(), alt=alt, only_kids=False, alpha=alpha, beta=beta)
+            
+            elif name == 'part':
+                self.uc[name] =  _uc_c(age.values(), alt=alt, only_kids=False, gamma=gamma, beta=beta)
+            
+        print self.uc
+    
+    def get_temps_garde(self):
+        """
+        Retruns temps_garde
+        """    
+        noi = self.children.keys()[0]
+        return self.children[noi]['temps_garde']
+        
+        
         
     def get_results_dataframe(self, default = False, difference = True, index_by_code = False):
         '''
@@ -531,7 +642,8 @@ class DesunionSimulation(Simulation):
     
 
     def diag(self):
-       
+        print self.scenario_chef
+        print self.scenario_part
         df = self.get_results_dataframe(index_by_code = True)
         df_nivvie = df.xs('nivvie')
         df_revdisp = df.xs('revdisp')
@@ -547,9 +659,11 @@ class DesunionSimulation(Simulation):
         
         loyer_chef = self.scenario_chef_seul.menage[0]['loyer']
         
+        pension_alim_tot = sum([ var['pension_alim'] for var in self.children.values()])
+        
         noi = self.children.keys()[0]
         if self.children[noi]["temps_garde"] == 'alternee_pension_non_decl':
-            pension_alim_tot = sum([ var['pension_alim'] for var in self.children.values()])
+            
             
             df_revdisp['chef'] = ( df_rev['chef'] + df_mini['chef_seul'] + 
                                    df_af['part']/2 + 
@@ -560,14 +674,14 @@ class DesunionSimulation(Simulation):
             df_mini['chef']  = df_mini['chef_seul']
             df_public['chef'] = ( df_logt['chef_seul'] + df_mini['chef_seul']+ 
                                   df_pfam['chef'] + df_impo['chef'] )
-
+            df_nivvie['chef'] = df_revdisp['chef']/self.uc['chef']
             
             df_revdisp['part'] = ( df_revdisp['part'] - df_af['part']/2 + 
                                    pension_alim_tot )
             df_pfam['part'] -= df_af['part']/2
             df_public['part'] = ( df_logt['part'] + df_mini['part']+ 
                                   df_pfam['part'] + df_impo['part'] )
-
+            df_nivvie['part'] = df_revdisp['part']/self.uc['part']
         
         
         
@@ -603,8 +717,8 @@ class DesunionSimulation(Simulation):
         df2 = df2.set_value(u"loyer", 'chef', 12*loyer_chef)
         df2 = df2.set_value(u"loyer", 'part', 12*self.scenario_part.menage[0]['loyer'])
         df2 = df2.set_value(u"pension", 'couple', 0)    
-        df2 = df2.set_value(u"pension", 'chef', pension_alim_tot )
-        df2 = df2.set_value(u"pension", 'part', -pension_alim_tot)
+        df2 = df2.set_value(u"pension", 'chef', -pension_alim_tot )
+        df2 = df2.set_value(u"pension", 'part', pension_alim_tot)
         
         
             
@@ -616,5 +730,14 @@ class DesunionSimulation(Simulation):
 
 
 if __name__ == '__main__':
-
-    pass
+    
+    parent = "non_custodian"
+    
+    age_c = [30, 30,  10, 10]
+    age = [30,  10, 10]
+    alt = False
+    alpha = 1 
+    beta  = .5
+    gamma = 1.5
+    print _uc_couple(age_c, only_kids = False)
+    print _uc_c(age, alt, only_kids = False, gamma = gamma , beta = beta)    print _uc_nc(age, alt, only_kids = False, alpha = alpha, beta = beta)
