@@ -11,8 +11,8 @@ from __future__ import division
 from src.core.simulation import ScenarioSimulation
 from scipy.optimize import fixed_point
 
-
-def get_loyer(scenario, yr):
+def get_loyer(scenario):
+    yr = scenario.year    
     simu = ScenarioSimulation()
     simu.set_config(nmen = 1, year = yr, country = 'france')
     simu.set_param()
@@ -30,7 +30,7 @@ def get_loyer(scenario, yr):
 
 if __name__ == '__main__':
     
-
+    pass
     
 
 

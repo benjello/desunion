@@ -8,18 +8,32 @@ Created on 12 oct. 2012
 '''
 
 from __future__ import division 
+from src.core.simulation import Simulation
 from src.core.simulation import ScenarioSimulation
 from src.core.utils_old import of_import
 
-import sys
 from src.qt.QtGui import QMainWindow, QApplication
 from src.widgets.matplotlibwidget import MatplotlibWidget
-from pandas import DataFrame
+from pandas import DataFrame, concat
 
-from src.core.simulation import Simulation
+from scipy.optimize import fixed_point
+def get_loyer(scenario):
+    yr = scenario.year    
+    simu = ScenarioSimulation()
+    simu.set_config(scenario = scenario, nmen = 1, year = yr, country = 'france')
+    simu.set_param()
 
-from pandas import concat
 
+    def func(loyer):
+        simu.scenario.menage[0].update({'loyer': loyer})                 
+        data, data_default = simu.compute()
+        revdisp = data['revdisp'].vals
+        logt = data['logt'].vals 
+        return ((revdisp - logt)/3 + logt )/12 
+
+    return fixed_point(func, 0)
+
+ 
 class ApplicationWindow(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
@@ -352,14 +366,11 @@ class DesunionSimulation(Simulation):
         # Updating households
         
         pension_alim_tot = sum([ var['pension_alim'] for var in self.children.values()])
-        mini_chef, mini_part, mini_part_seul = self.get_mini_broken()
         
         if housing_non_custodian is None:
             
-            housing_non_custodian = {'loyer': max(sal_chef + mini_chef
-                                                  - pension_alim_tot,0)/3/12}
-            housing_non_custodian_seul = {'loyer': max(sal_chef + 
-                                                       mini_chef,0)/3/12}
+            housing_non_custodian = {'loyer': get_loyer(scenario_chef)}
+            housing_non_custodian_seul = {'loyer': get_loyer(scenario_chef_seul)}
 
         for key, val in housing_non_custodian.iteritems():
             scenario_chef.menage[0].update({key: val}) 
@@ -369,10 +380,8 @@ class DesunionSimulation(Simulation):
 
         if housing_custodian is None:
             
-            housing_custodian = {'loyer': max(sal_part +  mini_part + 
-                                              pension_alim_tot,0)/3/12}
-            housing_custodian_seul = {'loyer': max(sal_part 
-                                                   + mini_part_seul,0)/3/12}
+            housing_custodian = {'loyer': get_loyer(scenario_part)}
+            housing_custodian_seul = {'loyer': get_loyer(scenario_part_seul)}
 
         for key, val in housing_custodian.iteritems():
             scenario_part.menage[0].update({key: val})
@@ -428,71 +437,14 @@ class DesunionSimulation(Simulation):
         scenario.indiv[1].update({ 'sali': sal_part})
         scenario_seuls.indiv[1].update({ 'sali': sal_part})
         
-        mini_couple, mini_couple_seuls = self.get_mini_couple()
         
         if housing is None:
-            scenario.menage[0].update({'loyer' : (sal_chef + sal_part + mini_couple)/3/12})
-            scenario_seuls.menage[0].update({'loyer' : (sal_chef + sal_part + mini_couple_seuls)/3/12})
+            scenario.menage[0].update({'loyer' : get_loyer(scenario)})
+            scenario_seuls.menage[0].update({'loyer' : get_loyer(scenario_seuls)})
         else:
             for key, val in housing.iteritems:
                 scenario.menage[0].update({key: val})
                 scenario_seuls.menage[0].update({key: val})
-        
-    def get_mini_couple(self):
-        """
-        Compute minimas sociaux for the couple
-        """
-        scenari = { 'couple' : self.scenario,
-                   'couple_seul' : self.scenario_seuls, 
-#                    'chef'   : self.scenario_chef,
-#                    'part'   : self.scenario_part,
-#                    'chef_seul'  : self.scenario_chef_seul,
-#                    'part_seul' : self.scenario_part_seul
-                    }
-
-        for name, scenario in scenari.iteritems():
-            simu = ScenarioSimulation()
-            simu.set_config(year = self.datesim.year, scenario = scenario, 
-                            country = self.country,
-                            totaux_file = self.totaux_file, 
-                            nmen = self.nmen, 
-                            maxrev = self.maxrev)
-            simu.set_param(self.P, self.P_default)        
-            data, data_default = simu.compute()
-            if name == 'couple':
-                rsa_couple = data['mini'].vals
-            elif name == "couple_seul":
-                rsa_couple_seul = data['mini'].vals
-                
-        return rsa_couple, rsa_couple_seul
-        
-    def get_mini_broken(self):
-        """
-        Compute minimas sociaux for the couple
-        """
-        scenari = { 'part'   : self.scenario_part,
-                    'chef_seul'  : self.scenario_chef_seul,
-                    'part_seul' : self.scenario_part_seul
-                    }
-
-        for name, scenario in scenari.iteritems():
-            simu = ScenarioSimulation()
-            simu.set_config(year = self.datesim.year, scenario = scenario, 
-                            country = self.country,
-                            totaux_file = self.totaux_file, 
-                            nmen = self.nmen, 
-                            maxrev = self.maxrev)
-            simu.set_param(self.P, self.P_default)        
-            data, data_default = simu.compute()
-            if name == 'part':
-                rsa_part = data['mini'].vals
-            elif name == "chef_seul":
-                rsa_chef_seul = data['mini'].vals
-            elif name == "part_seul":
-                rsa_part_seul = data['mini'].vals    
-        
-        return rsa_chef_seul, rsa_part, rsa_part_seul 
-        
         
         
     def _compute(self, difference):
@@ -500,9 +452,7 @@ class DesunionSimulation(Simulation):
         Computes data_dict  from scenari
         """
         
-        scenari = { 'couple' : self.scenario, # ??? ici on aurait pu écrire juste scenario ou bien s'agissait-il
-                   # d'une variable locale valable uniquement dans la définition de la méthode
-                   # create_couple
+        scenari = { 'couple' : self.scenario,
                    'couple_seul' : self.scenario_seuls, 
                     'chef'   : self.scenario_chef,
                     'part'   : self.scenario_part,

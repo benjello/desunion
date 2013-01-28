@@ -120,11 +120,11 @@ def test():
 def test2():
     e = 2
     ea = 0
-    rev_smic_chef = 3
-    rev_smic_part = 3
+    rev_smic_chef = 0
+    rev_smic_part = 0
     temps_garde ="classique"
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
-    df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = 3000)
+    df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = None)
     print df.to_string()
     
     
@@ -136,11 +136,12 @@ def test3():
     temps_garde ="classique"
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
     
-    compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension_test = 8000)
+    compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters)
 
 
-def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = None, pension_test = None):
-    
+def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = None):
+    from scipy.optimize import fixed_point
+
     def func_optimal_pension(pension): 
         df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters=uc_parameters, pension=pension)
         print df.to_string()
@@ -155,10 +156,17 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
             
         return opt_pension 
     
-    print func_optimal_pension(pension_test) - pension_test
+    optimal_pension = fixed_point(func_optimal_pension, 0)
+
+    return optimal_pension 
+
     
-#    return optimal_pension
+
     
+
+
+
+
 
 if __name__ == '__main__':
 
