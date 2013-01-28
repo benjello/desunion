@@ -12,27 +12,31 @@ COUNTRY = 'france'
 DIR = u"C:/Users/Utilisateur/"#Dropbox/CAS/Désunions/"    
 YEAR = 2009
 
-"""
-TODO: parent isolé
-"""
-
 
 from pandas import DataFrame, concat, Series, ExcelWriter
 from desunion import DesunionSimulation
 
-def get_children(e, ea, temps_garde = "classique"):
+def get_children(e, ea, temps_garde = "classique", pension = None):
     
     children = dict()
+    if pension is not None:
+        pension_per_child = pension/(e+ea)
     for i in range(1,e+1):
-        name = u"enfant " + str(i)
+        name = u"enfant " + str(i)    
         children[name] = {'birth' : "2002-01-01", 'temps_garde' : temps_garde, 'non_custodian' : 'chef'}
+        if pension is not None:
+            children[name].update({'pension' : pension_per_child}) 
+            
     for j in range(e+1,e+ea+1):
         name = u"enfant " + str(j)
         children[name] = {'birth' : "1996-01-01", 'temps_garde' : temps_garde, 'non_custodian' : 'chef'}
+        if pension is not None:
+            children[name].update({'pension' : pension_per_child})
+    
     return children
 
 
-def get_test_case(children, sal_chef_smic, sal_part_smic, uc_parameters = None):
+def get_test_case(children, sal_chef_smic, sal_part_smic, uc_parameters = None, pension = None):
     
     desunion = DesunionSimulation()
     desunion.set_config(nmen = 1, year = YEAR)
@@ -44,7 +48,7 @@ def get_test_case(children, sal_chef_smic, sal_part_smic, uc_parameters = None):
     desunion.set_children(children)
         
     desunion.create_couple(sal_chef, sal_part)    
-    desunion.set_pension()
+    desunion.set_pension(pension=pension)
     desunion.break_union()
     if uc_parameters is not None:    
         desunion.set_uc_parameters(uc_parameters)
@@ -54,9 +58,9 @@ def get_test_case(children, sal_chef_smic, sal_part_smic, uc_parameters = None):
 
 
 
-def get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde = "classique", uc_parameters = None):
-    children =  get_children(e, ea, temps_garde)
-    test_case = get_test_case(children, rev_smic_chef, rev_smic_part, uc_parameters = uc_parameters)
+def get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde = "classique", uc_parameters = None, pension = None):
+    children =  get_children(e, ea, temps_garde, pension)
+    test_case = get_test_case(children, rev_smic_chef, rev_smic_part, uc_parameters=uc_parameters, pension=pension )
     df = test_case.diag()
 
     from numpy import ones
@@ -70,9 +74,12 @@ def get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde = "classique
     #print s
     df = concat([ s, df], axis = 1) 
 
-
     return df
 
+
+
+    
+    
 
 def compute_and_save():
 
@@ -115,12 +122,45 @@ def test2():
     ea = 0
     rev_smic_chef = 3
     rev_smic_part = 3
-    temps_garde ="alternee_pension_non_decl"
-    uc_parameters = {'alpha' : 0, 'beta' : .75, 'gamma' : 1}
-    df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters)
+    temps_garde ="classique"
+    uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
+    df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = 3000)
     print df.to_string()
+    
+    
+def test3():
+    e = 2
+    ea = 0
+    rev_smic_chef = 3
+    rev_smic_part = 3
+    temps_garde ="classique"
+    uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
+    
+    compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension_test = 8000)
+
+
+def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = None, pension_test = None):
+    
+    def func_optimal_pension(pension): 
+        df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters=uc_parameters, pension=pension)
+        print df.to_string()
+        df = df.set_index([u"ménage"])
+        total_cost_after = ( df.get_value(u"chef", u"dépense totale pour enfants") +
+                             df.get_value(u"part", u"dépense totale pour enfants") )
+        revdisp_chef = df.get_value(u"chef", u"revdisp")
+        revdisp_part = df.get_value(u"part", u"revdisp")
+        total_cost_after_chef = df.get_value(u"chef", u"dépense totale pour enfants")
+        
+        opt_pension = total_cost_after*revdisp_chef/(revdisp_chef+revdisp_part)-total_cost_after_chef
+            
+        return opt_pension 
+    
+    print func_optimal_pension(pension_test) - pension_test
+    
+#    return optimal_pension
+    
 
 if __name__ == '__main__':
 
-    test2()
+    test3()
     
