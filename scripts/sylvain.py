@@ -146,13 +146,13 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
         df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters=uc_parameters, pension=pension)
         print df.to_string()
         df = df.set_index([u"ménage"])
-        total_cost_after = ( df.get_value(u"chef", u"dépense totale pour enfants") +
-                             df.get_value(u"part", u"dépense totale pour enfants") )
+        private_cost_after = ( df.get_value(u"chef", u"prise en charge privée de l'enfant") +
+                             df.get_value(u"part", u"prise en charge privée de l'enfant") )
         revdisp_chef = df.get_value(u"chef", u"revdisp")
         revdisp_part = df.get_value(u"part", u"revdisp")
-        total_cost_after_chef = df.get_value(u"chef", u"dépense totale pour enfants")
+        total_cost_after_chef = df.get_value(u"chef", u"prise en charge privée de l'enfant")
         
-        opt_pension = total_cost_after*revdisp_chef/(revdisp_chef+revdisp_part)-total_cost_after_chef
+        opt_pension = private_cost_after*revdisp_chef/(revdisp_chef+revdisp_part)-total_cost_after_chef
             
         return opt_pension 
     
