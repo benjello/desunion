@@ -120,8 +120,8 @@ def test():
 def test2():
     e = 2
     ea = 0
-    rev_smic_chef = 0
-    rev_smic_part = 0
+    rev_smic_chef = 3
+    rev_smic_part = 3
 
     temps_garde ="classique"
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
@@ -133,14 +133,26 @@ def test3():
     e = 2
     ea = 0
     rev_smic_chef = 3
-    rev_smic_part = 3
+    rev_smic_part = 1
     temps_garde ="classique"
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
     
-    compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters)
+    compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, 
+                            criterium = "nivvie")
 
-
-def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = None):
+    # 3,3
+    # bareme : 8863
+    # revdisp : pension = 4863
+    # nivvie : pension = 6243 (égalisation des niveaux de vie)
+    # revdisp_pyc : pension = 5803
+    # jacquot : 6243
+   
+    # 3,0
+    # nivvie : pension = - 1324 ! (le parent non gardien paie une pension)
+    
+    # 3,1
+    # jacquot pensio, 3387 alpha' : 0.3, 'beta' : .5, 'gamma' : 1.3}    
+def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = None , criterium = None):
     from scipy.optimize import fixed_point
 
     def func_optimal_pension(pension): 
@@ -153,12 +165,31 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
         revdisp_part = df.get_value(u"part", u"revdisp")
         total_cost_after_chef = df.get_value(u"chef", u"dépense totale pour enfants")
         public_cost_after_chef = df.get_value(u"chef", u"prise en charge publique de l'enfant")
+
+        nivvie_chef_after = df.get_value(u"chef", u"nivvie")
+        nivvie_part_after = df.get_value(u"part", u"nivvie")
         
 #        opt_pension = private_cost_after*(revdisp_chef + pension)/(revdisp_chef+revdisp_part) - total_cost_after_chef + public_cost_after_chef
 
         private_cost_after_chef = df.get_value(u"chef", u"prise en charge privée de l'enfant")        
-        opt_pension = private_cost_after*revdisp_chef/(revdisp_chef+revdisp_part)-private_cost_after_chef
 
+        if criterium == "revdisp":
+            opt_pension = private_cost_after*revdisp_chef/(revdisp_chef+revdisp_part)-private_cost_after_chef
+        elif criterium == "nivvie":
+            opt_pension = private_cost_after*nivvie_chef_after/(nivvie_chef_after+nivvie_part_after)-private_cost_after_chef
+        elif criterium == "revdisp_pyc":
+            opt_pension = private_cost_after*(revdisp_chef+pension)/(revdisp_chef+revdisp_part)-private_cost_after_chef    
+        elif criterium == "jacquot":
+            alpha = uc_parameters['alpha']
+            beta = uc_parameters['beta']
+            gamma = uc_parameters['gamma']
+            A = (.3*e + .5*ea)/(1 + .3*e + .5*ea)
+            B = (alpha*gamma*(.3*e + .5*ea))/(1 + alpha*gamma*(.3*e + .5*ea))
+            C = 1 + .3*e + .5*ea
+            D = 1 + alpha*gamma*(.3*e + .5*ea)
+            opt_pension = ((A-B)*revdisp_chef*revdisp_part)/((revdisp_chef/C) + (revdisp_part/D))
+            
+        
         return opt_pension 
     
     optimal_pension = fixed_point(func_optimal_pension, 0, xtol = 1e-5)

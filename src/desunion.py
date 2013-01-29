@@ -139,7 +139,6 @@ def _uc_nc(age, alt = False, only_kids = False, alpha = 0, beta = .5):
         adt = ( (15 <= ag) & (ag <= 150))
         enf = (0  <= ag) & (ag <= 14)
         uc += adt*uc_adt + enf*uc_enf
-        print adt, enf, uc
     
     return uc - uc_adt
     
@@ -670,7 +669,11 @@ class DesunionSimulation(Simulation):
 
         private_cost_after_chef = total_cost_after_chef - public_cost_after_chef
         private_cost_after_part = total_cost_after_part - public_cost_after_part
-
+        
+        nivvie_loss_couple = df_nivvie[u"couple"]/df_nivvie["couple_seul"] 
+        nivvie_loss_chef = df_nivvie[u"chef"]/df_nivvie["chef_seul"]
+        nivvie_loss_part = df_nivvie[u"part"]/df_nivvie["part_seul"]
+        
         df2 = DataFrame( [df_revdisp, df_pfam, df_mini, df_logt, df_impo, df_nivvie])
         df2 = df2[ ['couple', 'part', 'chef'] ]
         df2 = df2.set_value(u"dépense totale pour enfants", 'couple', total_cost_before)
@@ -689,7 +692,11 @@ class DesunionSimulation(Simulation):
         df2 = df2.set_value(u"pension", 'chef', -pension_alim_tot )
         df2 = df2.set_value(u"pension", 'part', pension_alim_tot)
         
-                    
+        df2 = df2.set_value(u"nivvie_loss", 'couple', nivvie_loss_couple)    
+        df2 = df2.set_value(u"nivvie_loss", 'chef', nivvie_loss_chef)
+        df2 = df2.set_value(u"nivvie_loss", 'part', nivvie_loss_part)
+        
+        
         df2 = df2.T
         df2.index.name = u"ménage"
         df2 = df2.reset_index() 
