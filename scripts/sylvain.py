@@ -132,7 +132,7 @@ def test3():
     e = 2
     ea = 0
     rev_smic_chef = 3
-    rev_smic_part = 3
+    rev_smic_part = 0
     temps_garde ="classique"
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
     
@@ -150,9 +150,10 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
                              df.get_value(u"part", u"prise en charge privée de l'enfant") )
         revdisp_chef = df.get_value(u"chef", u"revdisp")
         revdisp_part = df.get_value(u"part", u"revdisp")
-        total_cost_after_chef = df.get_value(u"chef", u"prise en charge privée de l'enfant")
+        total_cost_after_chef = df.get_value(u"chef", u"dépense totale pour enfants")
+        public_cost_after_chef = df.get_value(u"chef", u"prise en charge publique de l'enfant")
         
-        opt_pension = private_cost_after*revdisp_chef/(revdisp_chef+revdisp_part)-total_cost_after_chef
+        opt_pension = private_cost_after*(revdisp_chef + pension)/(revdisp_chef+revdisp_part) - total_cost_after_chef + public_cost_after_chef
             
         return opt_pension 
     

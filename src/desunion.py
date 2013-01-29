@@ -662,8 +662,8 @@ class DesunionSimulation(Simulation):
         
         #public_cost_after = ( public_cost_after_chef + public_cost_after_part )
         #private_cost_after = total_cost_after - public_cost_after
-        private_cost_after_chef = total_cost_after_chef - public_cost_after_chef
-        private_cost_after_part = total_cost_after_part - public_cost_after_part
+        private_cost_after_chef = total_cost_after_chef + pension_alim_tot - public_cost_after_chef
+        private_cost_after_part = total_cost_after_part - pension_alim_tot - public_cost_after_part
 
         df2 = DataFrame( [df_revdisp, df_pfam, df_mini, df_logt, df_impo, df_nivvie])
         df2 = df2[ ['couple', 'part', 'chef'] ]
