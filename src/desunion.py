@@ -20,6 +20,8 @@ from src.core.simulation import Simulation
 
 from pandas import concat
 
+from rent import get_loyer
+
 class ApplicationWindow(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
@@ -298,17 +300,14 @@ class DesunionSimulation(Simulation):
                
             elif temps_garde == 'alternee_pension_non_decl':# garde alternée fiscale = pas de pension alimentaire déclarée aux impots mais partage du QF
                 scenario_part.addIndiv(noi_enf_part, birth, 'pac', 'enf')
-                scenario_part.indiv[noi_enf_part].update({'alt': 1, 'quimen': 'enf'+str(noi_enf_part)})
-                
+                scenario_part.indiv[noi_enf_part].update({'alt': 1, 'quimen': 'enf'+str(noi_enf_part)})                
                 noi_enf_part += 1
-                print 'part'
-                print scenario_part
+
                 
                 scenario_chef.addIndiv(noi_enf_chef, birth, 'pac', 'enf')
                 scenario_chef.indiv[noi_enf_chef].update({'alt': 1})
                 noi_enf_chef += 1
-                print 'chef'
-                print scenario_chef
+
                 
             elif temps_garde == 'alternee_pension_decl':# TODO: garde alternée pas de pension alimentaire ?
                                             # garde alternée juridique ou pas
@@ -347,14 +346,15 @@ class DesunionSimulation(Simulation):
         # Updating households
         
         pension_alim_tot = sum([ var['pension_alim'] for var in self.children.values()])
-        mini_chef, mini_part, mini_part_seul = self.get_mini_broken()
-        
+#        mini_chef, mini_part, mini_part_seul = self.get_mini_broken()
+
+        for scenar in [ self.scenario, self.scenario_seuls, scenario_chef, scenario_part, 
+                         scenario_chef_seul, scenario_part_seul ]:
+            scenar.genNbEnf()
+
         if housing_non_custodian is None:
-            
-            housing_non_custodian = {'loyer': max(sal_chef + mini_chef
-                                                  - pension_alim_tot,0)/3/12}
-            housing_non_custodian_seul = {'loyer': max(sal_chef + 
-                                                       mini_chef,0)/3/12}
+            housing_non_custodian = {'loyer': get_loyer(scenario_chef)}
+            housing_non_custodian_seul = {'loyer': get_loyer(scenario_chef_seul) }
 
         for key, val in housing_non_custodian.iteritems():
             scenario_chef.menage[0].update({key: val}) 
@@ -362,12 +362,9 @@ class DesunionSimulation(Simulation):
         for key, val in housing_non_custodian_seul.iteritems():
             scenario_chef_seul.menage[0].update({key: val})
 
-        if housing_custodian is None:
-            
-            housing_custodian = {'loyer': max(sal_part +  mini_part + 
-                                              pension_alim_tot,0)/3/12}
-            housing_custodian_seul = {'loyer': max(sal_part 
-                                                   + mini_part_seul,0)/3/12}
+        if housing_custodian is None:    
+            housing_custodian = {'loyer': get_loyer(scenario_part)}
+            housing_custodian_seul = {'loyer': get_loyer(scenario_part_seul)}
 
         for key, val in housing_custodian.iteritems():
             scenario_part.menage[0].update({key: val})
@@ -375,9 +372,6 @@ class DesunionSimulation(Simulation):
         for key, val in housing_custodian_seul.iteritems():
             scenario_part_seul.menage[0].update({key: val})
         
-        for scenar in [ self.scenario, self.scenario_seuls, scenario_chef, scenario_part, 
-                         scenario_chef_seul, scenario_part_seul ]:
-            scenar.genNbEnf()
         
     def set_children(self, children):
         """
@@ -426,8 +420,8 @@ class DesunionSimulation(Simulation):
         mini_couple, mini_couple_seuls = self.get_mini_couple()
         
         if housing is None:
-            scenario.menage[0].update({'loyer' : (sal_chef + sal_part + mini_couple)/3/12})
-            scenario_seuls.menage[0].update({'loyer' : (sal_chef + sal_part + mini_couple_seuls)/3/12})
+            scenario.menage[0].update({'loyer' : get_loyer(scenario)})
+            scenario_seuls.menage[0].update({'loyer' : get_loyer(scenario_seuls)})
         else:
             for key, val in housing.iteritems:
                 scenario.menage[0].update({key: val})

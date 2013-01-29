@@ -113,8 +113,8 @@ def test():
 def test2():
     e = 2
     ea = 0
-    rev_smic_chef = 3
-    rev_smic_part = 3
+    rev_smic_chef = 0
+    rev_smic_part = 0
     temps_garde ="alternee_pension_non_decl"
     uc_parameters = {'alpha' : 0, 'beta' : .75, 'gamma' : 1}
     df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters)
