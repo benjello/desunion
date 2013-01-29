@@ -17,23 +17,26 @@ from src.widgets.matplotlibwidget import MatplotlibWidget
 from pandas import DataFrame, concat
 
 from scipy.optimize import fixed_point
-def get_loyer(scenario):
-    yr = scenario.year    
-    simu = ScenarioSimulation()
-    simu.set_config(scenario = scenario, nmen = 1, year = yr, country = 'france')
-    simu.set_param()
+
+#def get_loyer(scenario):
+#    yr = scenario.year    
+#    simu = ScenarioSimulation()
+#    simu.set_config(scenario = scenario, nmen = 1, year = yr, country = 'france')
+#    simu.set_param()
+#
+#
+#    def func(loyer):
+#        simu.scenario.menage[0].update({'loyer': loyer})                 
+#        data, data_default = simu.compute()
+#        revdisp = data['revdisp'].vals
+#        logt = data['logt'].vals 
+#        return ((revdisp - logt)/3 + logt )/12 
+#
+#    return fixed_point(func, 0)
 
 
-    def func(loyer):
-        simu.scenario.menage[0].update({'loyer': loyer})                 
-        data, data_default = simu.compute()
-        revdisp = data['revdisp'].vals
-        logt = data['logt'].vals 
-        return ((revdisp - logt)/3 + logt )/12 
+from rent import get_loyer
 
-    return fixed_point(func, 0)
-
- 
 class ApplicationWindow(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
@@ -316,16 +319,15 @@ class DesunionSimulation(Simulation):
                 scenario_part.addIndiv(noi_enf_part, birth, 'pac', 'enf')
                 scenario_part.indiv[noi_enf_part].update({'alt': 1, 'quimen': 'enf'+str(noi_enf_part)})
                 scenario_part.declar[0]['caseT'] = True
+
                 noi_enf_part += 1
-                print 'part'
-                print scenario_part
+
                 
                 scenario_chef.addIndiv(noi_enf_chef, birth, 'pac', 'enf')
                 scenario_chef.indiv[noi_enf_chef].update({'alt': 1})
                 scenario_chef.declar[0]['caseT'] = True
                 noi_enf_chef += 1
-                print 'chef'
-                print scenario_chef
+
                 
             elif temps_garde == 'alternee_pension_decl':# TODO: garde alternée pas de pension alimentaire ?
                                             # garde alternée juridique ou pas
@@ -366,11 +368,15 @@ class DesunionSimulation(Simulation):
         # Updating households
         
         pension_alim_tot = sum([ var['pension_alim'] for var in self.children.values()])
-        
+
+
+        for scenar in [ self.scenario, self.scenario_seuls, scenario_chef, scenario_part, 
+                         scenario_chef_seul, scenario_part_seul ]:
+            scenar.genNbEnf()
+
         if housing_non_custodian is None:
-            
             housing_non_custodian = {'loyer': get_loyer(scenario_chef)}
-            housing_non_custodian_seul = {'loyer': get_loyer(scenario_chef_seul)}
+            housing_non_custodian_seul = {'loyer': get_loyer(scenario_chef_seul) }
 
         for key, val in housing_non_custodian.iteritems():
             scenario_chef.menage[0].update({key: val}) 
@@ -378,8 +384,8 @@ class DesunionSimulation(Simulation):
         for key, val in housing_non_custodian_seul.iteritems():
             scenario_chef_seul.menage[0].update({key: val})
 
+
         if housing_custodian is None:
-            
             housing_custodian = {'loyer': get_loyer(scenario_part)}
             housing_custodian_seul = {'loyer': get_loyer(scenario_part_seul)}
 
@@ -389,9 +395,6 @@ class DesunionSimulation(Simulation):
         for key, val in housing_custodian_seul.iteritems():
             scenario_part_seul.menage[0].update({key: val})
         
-        for scenar in [ self.scenario, self.scenario_seuls, scenario_chef, scenario_part, 
-                         scenario_chef_seul, scenario_part_seul ]:
-            scenar.genNbEnf()
         
     def set_children(self, children):
         """
@@ -662,8 +665,11 @@ class DesunionSimulation(Simulation):
         
         #public_cost_after = ( public_cost_after_chef + public_cost_after_part )
         #private_cost_after = total_cost_after - public_cost_after
-        private_cost_after_chef = total_cost_after_chef + pension_alim_tot - public_cost_after_chef
-        private_cost_after_part = total_cost_after_part - pension_alim_tot - public_cost_after_part
+        # private_cost_after_chef = total_cost_after_chef + pension_alim_tot - public_cost_after_chef
+        # private_cost_after_part = total_cost_after_part - pension_alim_tot - public_cost_after_part
+
+        private_cost_after_chef = total_cost_after_chef - public_cost_after_chef
+        private_cost_after_part = total_cost_after_part - public_cost_after_part
 
         df2 = DataFrame( [df_revdisp, df_pfam, df_mini, df_logt, df_impo, df_nivvie])
         df2 = df2[ ['couple', 'part', 'chef'] ]

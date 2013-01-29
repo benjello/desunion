@@ -11,20 +11,21 @@ from __future__ import division
 from src.core.simulation import ScenarioSimulation
 from scipy.optimize import fixed_point
 
+
 def get_loyer(scenario):
     yr = scenario.year    
     simu = ScenarioSimulation()
-    simu.set_config(nmen = 1, year = yr, country = 'france')
+    simu.set_config(scenario= scenario, nmen = 1, year = yr, country = 'france')
     simu.set_param()
-    simu.scenario = scenario
+
 
     def func(loyer):
         simu.scenario.menage[0].update({'loyer': loyer})                 
         data, data_default = simu.compute()
         revdisp = data['revdisp'].vals
         logt = data['logt'].vals 
-        return ((revdisp - logt)/3 + logt )/12 
-
+        return float(((revdisp - logt)/3 + logt )/12) 
+    
     return fixed_point(func, 0)
 
 
@@ -33,8 +34,5 @@ if __name__ == '__main__':
     pass
     
 
-
-#        print 'logt : ', data['logt'].vals
-#        print 'revdisp : ', data['revdisp'].vals
 
     
