@@ -151,9 +151,9 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
                              df.get_value(u"part", u"prise en charge privée de l'enfant") )
         revdisp_chef = df.get_value(u"chef", u"revdisp")
         revdisp_part = df.get_value(u"part", u"revdisp")
-        total_cost_after_chef = df.get_value(u"chef", u"prise en charge privée de l'enfant")
+        private_cost_after_chef = df.get_value(u"chef", u"prise en charge privée de l'enfant")
         
-        opt_pension = private_cost_after*revdisp_chef/(revdisp_chef+revdisp_part)-total_cost_after_chef
+        opt_pension = private_cost_after*revdisp_chef/(revdisp_chef+revdisp_part)-private_cost_after_chef
             
         return opt_pension 
     
