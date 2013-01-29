@@ -14,7 +14,8 @@ def uc(a = 1, e=0, ea=0, alpha=0, e_ng=0):
     # e  : nombre d'enfants
     a = a + ea
     monop = (a==1)
-    return (1 + .5*(a-1) + .3*(e + alpha*e_ng)*( 1*(!nomonp) + gamma*monop )   )
+    gamma =1 # BUGGY !!!!!!!!
+    return (1 + .5*(a-1) + .3*(e + alpha*e_ng)*( 1*(not monop) + gamma*monop )   )
 
 def cenf(a = 1, e=0, ea=0, alpha=0, e_ng=0):
     # Coût des enfants (en proportion du revenu du ménage)
