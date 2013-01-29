@@ -15,9 +15,9 @@ from scipy.optimize import fixed_point
 def get_loyer(scenario):
     yr = scenario.year    
     simu = ScenarioSimulation()
-    simu.set_config(nmen = 1, year = yr, country = 'france')
+    simu.set_config(scenario= scenario, nmen = 1, year = yr, country = 'france')
     simu.set_param()
-    simu.scenario = scenario
+
 
     def func(loyer):
         simu.scenario.menage[0].update({'loyer': loyer})                 

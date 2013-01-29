@@ -17,21 +17,22 @@ from src.widgets.matplotlibwidget import MatplotlibWidget
 from pandas import DataFrame, concat
 
 from scipy.optimize import fixed_point
-def get_loyer(scenario):
-    yr = scenario.year    
-    simu = ScenarioSimulation()
-    simu.set_config(scenario = scenario, nmen = 1, year = yr, country = 'france')
-    simu.set_param()
 
-
-    def func(loyer):
-        simu.scenario.menage[0].update({'loyer': loyer})                 
-        data, data_default = simu.compute()
-        revdisp = data['revdisp'].vals
-        logt = data['logt'].vals 
-        return ((revdisp - logt)/3 + logt )/12 
-
-    return fixed_point(func, 0)
+#def get_loyer(scenario):
+#    yr = scenario.year    
+#    simu = ScenarioSimulation()
+#    simu.set_config(scenario = scenario, nmen = 1, year = yr, country = 'france')
+#    simu.set_param()
+#
+#
+#    def func(loyer):
+#        simu.scenario.menage[0].update({'loyer': loyer})                 
+#        data, data_default = simu.compute()
+#        revdisp = data['revdisp'].vals
+#        logt = data['logt'].vals 
+#        return ((revdisp - logt)/3 + logt )/12 
+#
+#    return fixed_point(func, 0)
 
 
 from rent import get_loyer
