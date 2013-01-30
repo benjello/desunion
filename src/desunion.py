@@ -604,8 +604,8 @@ class DesunionSimulation(Simulation):
     
 
     def diag(self):
-        print self.scenario_chef
-        print self.scenario_part
+#        print self.scenario_chef
+#        print self.scenario_part
         df = self.get_results_dataframe(index_by_code = True)
         df_nivvie = df.xs('nivvie')
         df_revdisp = df.xs('revdisp')
