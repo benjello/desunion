@@ -84,16 +84,21 @@ def get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde = "classique
 def compute_and_save():
 
     file = DIR = u"C:/Users/Utilisateur/Dropbox/CAS/Désunions/"  + 'test.xls'  
+    csv_file = DIR = u"C:/Users/Utilisateur/Dropbox/CAS/Désunions/"  + 'test.csv'  
     excel_writer = ExcelWriter(file)
     
     first = True
-    
-    for nb_enf in range(1,3+1):
-        for ea in range(0,2+1):            
+    nb_enf_max = 1
+    rev_smic_max = 1 
+    rev_smic_step = 1
+    temps_garde_range = ['classique'] # ['classique', 'alternee_pension_non_decl', 'alternee_pension_decl', 'reduite']
+
+    for nb_enf in range(1,nb_enf_max+1):
+        for ea in range(0,nb_enf+1):            
             e = nb_enf - ea
-            for temps_garde in ['classique', 'alternee_pension_non_decl', 'alternee_pension_decl', 'reduite']:
-                for rev_smic_chef in range(4):
-                    for rev_smic_part in range(4):
+            for temps_garde in temps_garde_range:
+                for rev_smic_chef in range(0,rev_smic_max, rev_smic_step):
+                    for rev_smic_part in range(0,rev_smic_max, rev_smic_step):
                         df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde)
                         if first:
                             df_final = df   
@@ -101,8 +106,10 @@ def compute_and_save():
                         else:
                             df_final = concat([df_final, df], axis=0)
                             
-    df_final.to_excel(excel_writer, float_format = "%.0f")
-    excel_writer.save()
+#    df_final.to_excel(excel_writer, float_format = "%.0f")
+#excel_writer.save()
+    df_final.to_csv(csv_file)
+    
 
 def test():
     e = 1
@@ -117,11 +124,12 @@ def test():
      
     print df.to_string()
 
-def test2():
-    e = 2
+
+def pension_according_to_bareme():
+    e = 3
     ea = 0
-    rev_smic_chef = 3
-    rev_smic_part = 3
+    rev_smic_chef = 4
+    rev_smic_part = 0
 
     temps_garde ="classique"
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
@@ -129,16 +137,16 @@ def test2():
     print df.to_string()
     
     
-def test3():
+def optimal_pension(criterium):
     e = 2
     ea = 0
-    rev_smic_chef = 3
+    rev_smic_chef = 1
     rev_smic_part = 1
     temps_garde ="classique"
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
     
     compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, 
-                            criterium = "nivvie")
+                            criterium = criterium)
 
     # 3,3
     # bareme : 8863
@@ -153,7 +161,7 @@ def test3():
     # 3,1
     # jacquot pensio, 3387 alpha' : 0.3, 'beta' : .5, 'gamma' : 1.3}    
 def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = None , criterium = None):
-    from scipy.optimize import fixed_point
+    from scipy.optimize import fixed_point, fsolve
 
     def func_optimal_pension(pension): 
         df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters=uc_parameters, pension=pension)
@@ -163,8 +171,12 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
                              df.get_value(u"part", u"prise en charge privée de l'enfant") )
         revdisp_chef = df.get_value(u"chef", u"revdisp")
         revdisp_part = df.get_value(u"part", u"revdisp")
+        
         total_cost_after_chef = df.get_value(u"chef", u"dépense totale pour enfants")
+        total_cost_after_part = df.get_value(u"part", u"dépense totale pour enfants")
+        total_cost_before = df.get_value(u"couple", u"dépense totale pour enfants")
         public_cost_after_chef = df.get_value(u"chef", u"prise en charge publique de l'enfant")
+        public_cost_after_part = df.get_value(u"part", u"prise en charge publique de l'enfant")
 
         nivvie_chef_after = df.get_value(u"chef", u"nivvie")
         nivvie_part_after = df.get_value(u"part", u"nivvie")
@@ -188,15 +200,19 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
             C = 1 + .3*e + .5*ea
             D = 1 + alpha*gamma*(.3*e + .5*ea)
             opt_pension = ((A-B)*revdisp_chef*revdisp_part)/((revdisp_chef/C) + (revdisp_part/D))
-            
+        elif criterium == "same_total_cost":
+            return total_cost_after_chef+total_cost_after_part-total_cost_before
         
         return opt_pension 
     
-    optimal_pension = fixed_point(func_optimal_pension, 0, xtol = 1e-5)
+    if criterium == "same_total_cost":
+        optimal_pension, infodict, ier, mesg = fsolve(func_optimal_pension, 10000, xtol = 1e-5)
+        print optimal_pension, infodict, ier, mesg
+    else:
+        optimal_pension = fixed_point(func_optimal_pension, 0, xtol = 1e-5)
 
     return optimal_pension 
 
-    
 
     
 
@@ -206,6 +222,7 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
 
 
 if __name__ == '__main__':
-
-    test3()
     
+
+   #compute_and_save()
+   optimal_pension("nivvie") 

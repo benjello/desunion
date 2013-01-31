@@ -303,12 +303,14 @@ class DesunionSimulation(Simulation):
 
                 if non_custodian == 'chef':
                     scenario_part.addIndiv(noi_enf_part, birth, 'pac', 'enf')
+                    scenario_part.indiv[noi_enf_part].update({'quimen': 'enf'+str(noi_enf_part)})
                     noi_enf_part += 1
                     alv_chef += pension_alim
                     alr_part += pension_alim
                     scenario_part.declar[0]['caseT'] = True
                 elif non_custodian == 'part':
                     scenario_chef.addIndiv(noi_enf_chef, birth, 'pac', 'enf') 
+                    scenario_chef.indiv[noi_enf_part].update({'quimen': 'enf'+str(noi_enf_part)})
                     noi_enf_chef += 1
                     alv_part += pension_alim
                     alr_chef += pension_alim
@@ -495,8 +497,8 @@ class DesunionSimulation(Simulation):
                     }
 
         alt = (self.get_temps_garde() in ['alternee_pension_decl', 'alternee_pension_non_decl'])
-        print 'temps_garde :', self.get_temps_garde()
-        print 'alternee :', alt
+#        print 'temps_garde :', self.get_temps_garde()
+#        print 'alternee :', alt
         for name, scenario in scenari.iteritems():
             age = dict()
             for noi, var in scenario.indiv.iteritems():   
@@ -519,7 +521,7 @@ class DesunionSimulation(Simulation):
             elif name == 'part':
                 self.uc[name] =  _uc_c(age.values(), alt=alt, only_kids=False, gamma=gamma, beta=beta)
             
-        print self.uc
+#        print self.uc
     
     def get_temps_garde(self):
         """
@@ -604,8 +606,8 @@ class DesunionSimulation(Simulation):
     
 
     def diag(self):
-        print self.scenario_chef
-        print self.scenario_part
+#        print self.scenario_chef
+#        print self.scenario_part
         df = self.get_results_dataframe(index_by_code = True)
         df_nivvie = df.xs('nivvie')
         df_revdisp = df.xs('revdisp')
@@ -625,7 +627,6 @@ class DesunionSimulation(Simulation):
         
         noi = self.children.keys()[0]
         if self.children[noi]["temps_garde"] == 'alternee_pension_non_decl':
-            
             
             df_revdisp['chef'] = ( df_rev['chef'] + df_mini['chef_seul'] + 
                                    df_af['part']/2 + 
@@ -659,7 +660,7 @@ class DesunionSimulation(Simulation):
         
 #        total_cost_after = total_cost_after_chef + total_cost_after_part
         
-        public_cost_after_chef = df_public['chef'] - df_public['chef_seul']  
+        public_cost_after_chef = df_public['chef'] - df_public['chef_seul']
         public_cost_after_part = df_public['part'] - df_public['part_seul'] 
         
         #public_cost_after = ( public_cost_after_chef + public_cost_after_part )
@@ -669,6 +670,8 @@ class DesunionSimulation(Simulation):
 
         private_cost_after_chef = total_cost_after_chef - public_cost_after_chef
         private_cost_after_part = total_cost_after_part - public_cost_after_part
+        
+        desunion_public_cost = df_public['part'] + df_public['chef'] - df_public['couple'] 
         
         nivvie_loss_couple = df_nivvie[u"couple"]/df_nivvie["couple_seul"] 
         nivvie_loss_chef = df_nivvie[u"chef"]/df_nivvie["chef_seul"]
@@ -695,7 +698,7 @@ class DesunionSimulation(Simulation):
         df2 = df2.set_value(u"nivvie_loss", 'couple', nivvie_loss_couple)    
         df2 = df2.set_value(u"nivvie_loss", 'chef', nivvie_loss_chef)
         df2 = df2.set_value(u"nivvie_loss", 'part', nivvie_loss_part)
-        
+        df2 = df2.set_value(u"coût public de la désunion", "couple", desunion_public_cost )
         
         df2 = df2.T
         df2.index.name = u"ménage"
