@@ -84,16 +84,21 @@ def get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde = "classique
 def compute_and_save():
 
     file = DIR = u"C:/Users/Utilisateur/Dropbox/CAS/Désunions/"  + 'test.xls'  
+    csv_file = DIR = u"C:/Users/Utilisateur/Dropbox/CAS/Désunions/"  + 'test.csv'  
     excel_writer = ExcelWriter(file)
     
     first = True
-    
-    for nb_enf in range(1,3+1):
+    nb_enf_max = 1
+    rev_smic_max = 1 
+    rev_smic_step = 1
+    temps_garde_range = ['classique'] # ['classique', 'alternee_pension_non_decl', 'alternee_pension_decl', 'reduite']
+
+    for nb_enf in range(1,nb_enf_max+1):
         for ea in range(0,nb_enf+1):            
             e = nb_enf - ea
-            for temps_garde in ['classique', 'alternee_pension_non_decl', 'alternee_pension_decl', 'reduite']:
-                for rev_smic_chef in range(4):
-                    for rev_smic_part in range(4):
+            for temps_garde in temps_garde_range:
+                for rev_smic_chef in range(0,rev_smic_max, rev_smic_step):
+                    for rev_smic_part in range(0,rev_smic_max, rev_smic_step):
                         df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde)
                         if first:
                             df_final = df   
@@ -101,8 +106,10 @@ def compute_and_save():
                         else:
                             df_final = concat([df_final, df], axis=0)
                             
-    df_final.to_excel(excel_writer, float_format = "%.0f")
-    excel_writer.save()
+#    df_final.to_excel(excel_writer, float_format = "%.0f")
+#excel_writer.save()
+    df_final.to_csv(csv_file)
+    
 
 def test():
     e = 1
@@ -117,11 +124,12 @@ def test():
      
     print df.to_string()
 
-def test2():
-    e = 2
+
+def pension_according_to_bareme():
+    e = 3
     ea = 0
-    rev_smic_chef = 3
-    rev_smic_part = 3
+    rev_smic_chef = 4
+    rev_smic_part = 0
 
     temps_garde ="classique"
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
@@ -129,16 +137,16 @@ def test2():
     print df.to_string()
     
     
-def test3():
+def optimal_pension(criterium):
     e = 2
     ea = 0
-    rev_smic_chef = 3
-    rev_smic_part = 3
+    rev_smic_chef = 1
+    rev_smic_part = 1
     temps_garde ="classique"
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
     
     compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, 
-                            criterium = "revdisp")
+                            criterium = criterium)
 
     # 3,3
     # bareme : 8863
@@ -192,8 +200,6 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
             C = 1 + .3*e + .5*ea
             D = 1 + alpha*gamma*(.3*e + .5*ea)
             opt_pension = ((A-B)*revdisp_chef*revdisp_part)/((revdisp_chef/C) + (revdisp_part/D))
-        elif criterium == "same_total_cost_pyc":
-            opt_pension = (total_cost_before - public_cost_after_chef - public_cost_after_part)*nivvie_chef_after/(nivvie_chef_after+nivvie_part_after)-private_cost_after_chef        
         elif criterium == "same_total_cost":
             return total_cost_after_chef+total_cost_after_part-total_cost_before
         
@@ -207,7 +213,6 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
 
     return optimal_pension 
 
-    
 
     
 
@@ -217,6 +222,7 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
 
 
 if __name__ == '__main__':
-
-    test3()
     
+
+   #compute_and_save()
+   optimal_pension("nivvie") 
