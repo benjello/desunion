@@ -10,10 +10,24 @@ Created on 17 janv. 2013
 from numpy import ones, arange
 from scipy.optimize import fixed_point, fsolve
 
+
 COUNTRY = 'france'
 DIR = u"C:/Users/Utilisateur/"#Dropbox/CAS/Désunions/"    
 YEAR = 2011
+import os
+from src import SRC_PATH
+from datetime import datetime
+from src.parametres.paramData import XmlReader, Tree2Object
 
+def get_asf(nbenf):
+    param_file = os.path.join(SRC_PATH, 'countries', COUNTRY, 'param', 'param.xml')
+    date_str = str(YEAR)+ '-01-01'
+    datesim = datetime.strptime(date_str ,"%Y-%m-%d").date()
+    reader = XmlReader(param_file, datesim)
+    rootNode = reader.tree
+    P = Tree2Object(rootNode, defaut=True)
+    
+    return round(nbenf * 12 * P.fam.af.bmaf * P.fam.asf.taux1, 2)
 
 from pandas import DataFrame, concat, Series, ExcelWriter
 from desunion import DesunionSimulation
@@ -111,6 +125,45 @@ def compute_and_save_bareme():
                             
     df_final.to_csv(csv_file)
     
+    
+def compute_and_save_opt_pension():
+
+    csv_file = DIR = u"C:/Users/Utilisateur/Dropbox/CAS/Désunions/"  + 'opt_pentsion.csv'  
+
+    nb_enf_max = 4
+    nb_enf_max_14 = 0
+    rev_smic_max = 4 
+    rev_smic_step = .5
+    temps_garde_range = ['classique', 'alternee_pension_non_decl', 'alternee_pension_decl']
+
+    first = True
+
+    for uc_parameters in [ {'alpha' : 0, 'beta' : .5, 'gamma' : 1}, {'alpha' : 0.4, 'beta' : .7, 'gamma' : 1.4}]:  
+        for nb_enf in range(1,nb_enf_max+1):
+            for ea in range(0,nb_enf_max_14+1):            
+                e = nb_enf - ea
+                for temps_garde in temps_garde_range:
+                    for rev_smic_chef in arange(0,rev_smic_max, rev_smic_step):
+                        for rev_smic_part in arange(0,rev_smic_max, rev_smic_step):
+                            
+                            opt_pension = compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, criterium = criterium)
+                            asf = get_asf(nb_enf)
+                            if opt_pension >= asf:
+                                df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = opt_pension, disable_asf = True)
+                            else:
+                                df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = 0)
+                            
+                            print df
+                            if first:
+                                df_final = df  
+                                first = False
+                            else:
+                                df_final = concat([df_final, df], axis=0)
+    
+    
+    df_final.to_csv(csv_file)    
+    
+    
 
 def test():
     e = 1
@@ -146,9 +199,21 @@ def optimal_pension(criterium):
     temps_garde ="classique"
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
     
-    compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, 
+    opt_pension = compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, 
                             criterium = criterium)
-
+    
+    asf = get_asf(nb_enf)
+    print 'opt_pension :', opt_pension  
+    if opt_pension >= asf:
+        df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = opt_pension, disable_asf = True)
+    else:
+        df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = 0)
+    
+    print df
+    
+    
+    print opt_pension
+    
     # 3,3
     # bareme : 8863
     # revdisp : pension = 4863
@@ -219,6 +284,7 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
 
 
 if __name__ == '__main__':
-    
-   compute_and_save_bareme()
-   #optimal_pension("nivvie") 
+   #compute_and_save_bareme()
+#   optimal_pension("nivvie")
+
+    print get_asf(1)
