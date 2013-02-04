@@ -7,10 +7,12 @@ Created on 17 janv. 2013
 @author: PYC MBJ
 '''
 
+from numpy import ones, arange
+from scipy.optimize import fixed_point, fsolve
 
 COUNTRY = 'france'
 DIR = u"C:/Users/Utilisateur/"#Dropbox/CAS/Désunions/"    
-YEAR = 2009
+YEAR = 2011
 
 
 from pandas import DataFrame, concat, Series, ExcelWriter
@@ -36,13 +38,13 @@ def get_children(e, ea, temps_garde = "classique", pension = None):
     return children
 
 
-def get_test_case(children, sal_chef_smic, sal_part_smic, uc_parameters = None, pension = None):
+def get_test_case(children, sal_chef_smic, sal_part_smic, uc_parameters = None, pension = None, disable_asf = False):
     
     desunion = DesunionSimulation()
     desunion.set_config(nmen = 1, year = YEAR)
     desunion.set_param()
     
-    sal_chef    = sal_chef_smic*1072*12  # 2011 !! 
+    sal_chef    = sal_chef_smic*107*12  # for 2011
     sal_part = sal_part_smic*1072*12
     
     desunion.set_children(children)
@@ -52,24 +54,27 @@ def get_test_case(children, sal_chef_smic, sal_part_smic, uc_parameters = None, 
     desunion.break_union()
     if uc_parameters is not None:    
         desunion.set_uc_parameters(uc_parameters)
-    
+
+    if disable_asf:
+        desunion.disable_prestations(['asf'])   
+
     return desunion
 
 
-
-
-def get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde = "classique", uc_parameters = None, pension = None):
+def get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde = "classique", uc_parameters = None, pension = None, disable_asf = False):
     children =  get_children(e, ea, temps_garde, pension)
-    test_case = get_test_case(children, rev_smic_chef, rev_smic_part, uc_parameters=uc_parameters, pension=pension )
+    test_case = get_test_case(children, rev_smic_chef, rev_smic_part, uc_parameters=uc_parameters, pension=pension, disable_asf=disable_asf)
     df = test_case.diag()
-
-    from numpy import ones
+    
      
     s= DataFrame( {'enfant de moins de 14 ans' : e*ones(len(df)),
                    'enfant de plus de 14 ans' : ea*ones(len(df)),
                    'rev_smic_chef' :  rev_smic_chef*ones(len(df)),
                    'rev_smic_part' :  rev_smic_part*ones(len(df)),
-                   'temps_garde' :  [temps_garde]*len(df) 
+                   'temps_garde' :  [temps_garde]*len(df), 
+                   'alpha' : test_case.uc_parameters['alpha']*ones(len(df)),
+                   'beta' : test_case.uc_parameters['beta']*ones(len(df)),
+                   'gamma' : test_case.uc_parameters['gamma']*ones(len(df))
                    })
     #print s
     df = concat([ s, df], axis = 1) 
@@ -77,37 +82,33 @@ def get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde = "classique
     return df
 
 
+def compute_and_save_bareme():
 
-    
-    
+    csv_file = DIR = u"C:/Users/Utilisateur/Dropbox/CAS/Désunions/"  + 'bareme.csv'  
 
-def compute_and_save():
+    nb_enf_max = 4
+    nb_enf_max_14 = 0
+    rev_smic_max = 4 
+    rev_smic_step = .5
+    temps_garde_range = ['classique', 'alternee_pension_non_decl', 'alternee_pension_decl']
 
-    file = DIR = u"C:/Users/Utilisateur/Dropbox/CAS/Désunions/"  + 'test.xls'  
-    csv_file = DIR = u"C:/Users/Utilisateur/Dropbox/CAS/Désunions/"  + 'test.csv'  
-    excel_writer = ExcelWriter(file)
-    
     first = True
-    nb_enf_max = 1
-    rev_smic_max = 1 
-    rev_smic_step = 1
-    temps_garde_range = ['classique'] # ['classique', 'alternee_pension_non_decl', 'alternee_pension_decl', 'reduite']
 
-    for nb_enf in range(1,nb_enf_max+1):
-        for ea in range(0,nb_enf+1):            
-            e = nb_enf - ea
-            for temps_garde in temps_garde_range:
-                for rev_smic_chef in range(0,rev_smic_max, rev_smic_step):
-                    for rev_smic_part in range(0,rev_smic_max, rev_smic_step):
-                        df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde)
-                        if first:
-                            df_final = df   
-                            first = False
-                        else:
-                            df_final = concat([df_final, df], axis=0)
+    for uc_parameters in [ {'alpha' : 0, 'beta' : .5, 'gamma' : 1}, {'alpha' : 0.4, 'beta' : .7, 'gamma' : 1.4}]:  
+        for nb_enf in range(1,nb_enf_max+1):
+            for ea in range(0,nb_enf_max_14+1):            
+                e = nb_enf - ea
+                for temps_garde in temps_garde_range:
+                    for rev_smic_chef in arange(0,rev_smic_max, rev_smic_step):
+                        for rev_smic_part in arange(0,rev_smic_max, rev_smic_step):
+                            df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters)
+                            print df
+                            if first:
+                                df_final = df  
+                                first = False
+                            else:
+                                df_final = concat([df_final, df], axis=0)
                             
-#    df_final.to_excel(excel_writer, float_format = "%.0f")
-#excel_writer.save()
     df_final.to_csv(csv_file)
     
 
@@ -159,12 +160,15 @@ def optimal_pension(criterium):
     # nivvie : pension = - 1324 ! (le parent non gardien paie une pension)
     
     # 3,1
-    # jacquot pensio, 3387 alpha' : 0.3, 'beta' : .5, 'gamma' : 1.3}    
+    # jacquot pensio, 3387 alpha' : 0.3, 'beta' : .5, 'gamma' : 1.3}
+    
+    
+       
 def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = None , criterium = None):
-    from scipy.optimize import fixed_point, fsolve
 
+    # Define a useful function
     def func_optimal_pension(pension): 
-        df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters=uc_parameters, pension=pension)
+        df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters=uc_parameters, pension=pension, disable_asf = True)
         print df.to_string()
         df = df.set_index([u"ménage"])
         private_cost_after = ( df.get_value(u"chef", u"prise en charge privée de l'enfant") +
@@ -210,19 +214,11 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
         print optimal_pension, infodict, ier, mesg
     else:
         optimal_pension = fixed_point(func_optimal_pension, 0, xtol = 1e-5)
-
-    return optimal_pension 
-
-
     
-
-
-
-
+    return optimal_pension 
 
 
 if __name__ == '__main__':
     
-
-   #compute_and_save()
-   optimal_pension("nivvie") 
+   compute_and_save_bareme()
+   #optimal_pension("nivvie") 

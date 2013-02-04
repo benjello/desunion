@@ -202,7 +202,7 @@ class DesunionSimulation(Simulation):
         self.nmen = None
         self.maxrev = None
         self.uc_parameters = dict(alpha = 0, beta = .5, gamma = 1) # TODO: define here alpha etc
-    
+        self.disabled_prestations = None
     
     def set_uc_parameters(self, parameters):
         """
@@ -472,7 +472,7 @@ class DesunionSimulation(Simulation):
                             nmen = self.nmen, 
                             maxrev = self.maxrev)
             simu.set_param(self.P, self.P_default)
-
+            simu.disable_prestations(self.disabled_prestations)
         
             data, data_default = simu.compute(difference)
             datas[name] = {'data' : data, 'default': data_default}
@@ -602,7 +602,6 @@ class DesunionSimulation(Simulation):
             
         for child in self.children.itervalues():
             child['pension_alim'] = pension_per_child
-    
     
 
     def diag(self):
