@@ -58,7 +58,7 @@ def get_test_case(children, sal_chef_smic, sal_part_smic, uc_parameters = None, 
     desunion.set_config(nmen = 1, year = YEAR)
     desunion.set_param()
     
-    sal_chef    = sal_chef_smic*107*12  # for 2011
+    sal_chef = sal_chef_smic*1072*12  # for 2011
     sal_part = sal_part_smic*1072*12
     
     desunion.set_children(children)
@@ -166,11 +166,11 @@ def compute_and_save_opt_pension():
     
 
 def test():
-    e = 1
+    e = 2
     ea = 0
-    rev_smic_chef = 1
-    rev_smic_part = 1
-    temps_garde ="alternee_pension_non_decl"
+    rev_smic_chef = 2
+    rev_smic_part = 2
+    temps_garde ="classique"
     children =  get_children(e, ea, temps_garde)
     test_case = get_test_case(children, rev_smic_chef, rev_smic_part)
     
@@ -180,10 +180,10 @@ def test():
 
 
 def pension_according_to_bareme():
-    e = 3
+    e = 2
     ea = 0
-    rev_smic_chef = 4
-    rev_smic_part = 0
+    rev_smic_chef = 2
+    rev_smic_part = 2
 
     temps_garde ="classique"
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
@@ -202,17 +202,16 @@ def optimal_pension(criterium):
     opt_pension = compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, 
                             criterium = criterium)
     
-    asf = get_asf(nb_enf)
+    asf = get_asf(e+ea)
     print 'opt_pension :', opt_pension  
+    print 'asf :', asf  
     if opt_pension >= asf:
         df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = opt_pension, disable_asf = True)
     else:
         df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = 0)
     
-    print df
+    print df.to_string()
     
-    
-    print opt_pension
     
     # 3,3
     # bareme : 8863
@@ -284,7 +283,8 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
 
 
 if __name__ == '__main__':
-   #compute_and_save_bareme()
+   compute_and_save_bareme()
 #   optimal_pension("nivvie")
 
-    print get_asf(1)
+#    print get_asf(1)
+#    pension_according_to_bareme()
