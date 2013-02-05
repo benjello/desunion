@@ -1,4 +1,4 @@
-# /usr/bin/env python
+# /usr/bin/env python-
 # -*- coding:utf-8 -*-
 
 '''
@@ -14,6 +14,7 @@ from scipy.optimize import fixed_point, fsolve
 COUNTRY = 'france'
 DIR = u"C:/Users/Utilisateur/"#Dropbox/CAS/Désunions/"    
 YEAR = 2011
+EPS = 1e-3
 import os
 from src import SRC_PATH
 from datetime import datetime
@@ -126,7 +127,7 @@ def compute_and_save_bareme():
     df_final.to_csv(csv_file)
     
     
-def compute_and_save_opt_pension():
+def compute_and_save_opt_pension(criterium):
 
     csv_file = DIR = u"C:/Users/Utilisateur/Dropbox/CAS/Désunions/"  + 'opt_pentsion.csv'  
 
@@ -135,7 +136,6 @@ def compute_and_save_opt_pension():
     rev_smic_max = 4 
     rev_smic_step = .5
     temps_garde_range = ['classique', 'alternee_pension_non_decl', 'alternee_pension_decl']
-
     first = True
 
     for uc_parameters in [ {'alpha' : 0, 'beta' : .5, 'gamma' : 1}, {'alpha' : 0.4, 'beta' : .7, 'gamma' : 1.4}]:  
@@ -144,8 +144,7 @@ def compute_and_save_opt_pension():
                 e = nb_enf - ea
                 for temps_garde in temps_garde_range:
                     for rev_smic_chef in arange(0,rev_smic_max, rev_smic_step):
-                        for rev_smic_part in arange(0,rev_smic_max, rev_smic_step):
-                            
+                        for rev_smic_part in arange(0,rev_smic_max, rev_smic_step):                 
                             opt_pension = compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, criterium = criterium)
                             asf = get_asf(nb_enf)
                             if opt_pension >= asf:
@@ -159,9 +158,9 @@ def compute_and_save_opt_pension():
                                 first = False
                             else:
                                 df_final = concat([df_final, df], axis=0)
+                            df_final.to_csv(csv_file)    
     
-    
-    df_final.to_csv(csv_file)    
+
     
     
 
@@ -185,7 +184,7 @@ def pension_according_to_bareme():
     rev_smic_chef = 2
     rev_smic_part = 2
 
-    temps_garde ="classique"
+    temps_garde ="alternee_pension_non_decl"
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
     df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = None)
     print df.to_string()
@@ -194,8 +193,8 @@ def pension_according_to_bareme():
 def optimal_pension(criterium):
     e = 2
     ea = 0
-    rev_smic_chef = 1
-    rev_smic_part = 1
+    rev_smic_chef = 0
+    rev_smic_part = 0
     temps_garde ="classique"
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
     
@@ -274,17 +273,20 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
         return opt_pension 
     
     if criterium == "same_total_cost":
-        optimal_pension, infodict, ier, mesg = fsolve(func_optimal_pension, 10000, xtol = 1e-5)
+        optimal_pension, infodict, ier, mesg = fsolve(func_optimal_pension, 10000, xtol = EPS)
         print optimal_pension, infodict, ier, mesg
     else:
-        optimal_pension = fixed_point(func_optimal_pension, 0, xtol = 1e-5)
+        optimal_pension = fixed_point(func_optimal_pension, 0, xtol = EPS)
     
     return optimal_pension 
 
 
 if __name__ == '__main__':
-   compute_and_save_bareme()
+#   compute_and_save_bareme()
 #   optimal_pension("nivvie")
 
 #    print get_asf(1)
 #    pension_according_to_bareme()
+
+#   For PYC 
+    compute_and_save_opt_pension("nivvie") 

@@ -12,38 +12,9 @@ from src.core.simulation import Simulation
 from src.core.simulation import ScenarioSimulation
 from src.core.utils_old import of_import
 
-from src.qt.QtGui import QMainWindow, QApplication
-from src.widgets.matplotlibwidget import MatplotlibWidget
 from pandas import DataFrame, concat
-
-from scipy.optimize import fixed_point
-
-#def get_loyer(scenario):
-#    yr = scenario.year    
-#    simu = ScenarioSimulation()
-#    simu.set_config(scenario = scenario, nmen = 1, year = yr, country = 'france')
-#    simu.set_param()
-#
-#
-#    def func(loyer):
-#        simu.scenario.menage[0].update({'loyer': loyer})                 
-#        data, data_default = simu.compute()
-#        revdisp = data['revdisp'].vals
-#        logt = data['logt'].vals 
-#        return ((revdisp - logt)/3 + logt )/12 
-#
-#    return fixed_point(func, 0)
-
-
 from rent import get_loyer
 
-class ApplicationWindow(QMainWindow):
-    def __init__(self):
-        QMainWindow.__init__(self)
-        self.mplwidget = MatplotlibWidget(self)
-        self.mplwidget.setFocus()
-        self.setCentralWidget(self.mplwidget)
-        
 
 from datetime import datetime    
 
@@ -320,10 +291,8 @@ class DesunionSimulation(Simulation):
                 scenario_part.addIndiv(noi_enf_part, birth, 'pac', 'enf')
                 scenario_part.indiv[noi_enf_part].update({'alt': 1, 'quimen': 'enf'+str(noi_enf_part)})
                 scenario_part.declar[0]['caseT'] = True
-
                 noi_enf_part += 1
 
-                
                 scenario_chef.addIndiv(noi_enf_chef, birth, 'pac', 'enf')
                 scenario_chef.indiv[noi_enf_chef].update({'alt': 1})
                 scenario_chef.declar[0]['caseT'] = True
@@ -592,6 +561,9 @@ class DesunionSimulation(Simulation):
         nb_enf = len(self.children)
         noi = self.children.keys()[0]
         temps_garde = self.children[noi]['temps_garde']
+        
+        if temps_garde == "alternee_pension_non_decl":
+            self.disable_prestations(['asf'])   # We disable asf because it is on when "fiscal" pension is zero
         
         if pension is None:
             pension_per_child = total_pension(rev_non_custodian, 
