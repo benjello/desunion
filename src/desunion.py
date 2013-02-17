@@ -8,9 +8,9 @@ Created on 12 oct. 2012
 '''
 
 from __future__ import division 
-from src.core.simulation import Simulation
-from src.core.simulation import ScenarioSimulation
-from src.core.utils_old import of_import
+from src.lib.simulation import Simulation
+from src.lib.simulation import ScenarioSimulation
+from src.lib.utils import of_import
 
 from pandas import DataFrame, concat
 from rent import get_loyer
