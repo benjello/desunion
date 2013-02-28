@@ -25,11 +25,13 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
 
     # Define a useful function
     def func_optimal_pension(pension):
-        
-        if disabled is None or "asf" not in disabled:
-            disabled += ['asf']
+         
+        if disabled is None:
+            dis =  ["asf"] 
+        elif "asf" not in disabled:
+            dis = disabled + ['asf']
             
-        df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters=uc_parameters, pension=pension, disabled=disabled)
+        df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters=uc_parameters, pension=pension, disabled=dis)
         print df.to_string()
         df = df.set_index([u"ménage"])
         private_cost_after = ( df.get_value(u"chef", u"prise en charge privée de l'enfant") +
@@ -74,7 +76,10 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
         optimal_pension, infodict, ier, mesg = fsolve(func_optimal_pension, 10000, xtol = EPS)
         print optimal_pension, infodict, ier, mesg
     else:
-        optimal_pension = fixed_point(func_optimal_pension, 0, xtol = EPS)
+        try :
+            optimal_pension = fixed_point(func_optimal_pension, 0, xtol = EPS, maxiter = 10)
+        except RuntimeError:
+            optimal_pension = 10000
     
     return optimal_pension
 
@@ -116,6 +121,7 @@ def compute_and_save_bareme(disable_api = False):
     
     
 def compute_and_save_opt_pension(criterium, disable_api = False):
+
 
     if disable_api:
         csv_file = DIR  + 'opt_pension_no_api.csv'  
@@ -159,6 +165,7 @@ def compute_and_save_opt_pension(criterium, disable_api = False):
                             df_final.to_csv(csv_file)    
     
 
+
 def pension_according_to_bareme(disable_api=False):
     e = 2
     ea = 0
@@ -169,24 +176,25 @@ def pension_according_to_bareme(disable_api=False):
         disabled = ['api']
 
     temps_garde ="alternee_pension_non_decl" # alternee_pension_non_decl', 'alternee_pension_decl
+
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
     df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = None, disabled=disabled)
     print df.to_string()
-    
     
 def optimal_pension(criterium, disable_api = False):
     e = 4
     ea = 0
     rev_smic_chef = 0.5
-    rev_smic_part = 1
+    rev_smic_part = 0
     temps_garde ="classique" # alternee_pension_non_decl', 'alternee_pension_decl
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
-    
-    opt_pension = compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, 
-                            criterium = criterium)
+
     disabled = []
     if disable_api:
         disabled += ['api']
+    
+    opt_pension = compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, 
+                            criterium = criterium, disabled=disabled)
  
     asf = get_asf(e+ea, year=YEAR)
     print 'opt_pension :', opt_pension  
@@ -212,7 +220,7 @@ def optimal_pension(criterium, disable_api = False):
     # 3,1
     # jacquot pensio, 3387 alpha' : 0.3, 'beta' : .5, 'gamma' : 1.3}
     
-    
+
 def test():
     e = 2
     ea = 0
@@ -229,13 +237,7 @@ def test():
  
 
 
+
 if __name__ == '__main__':
 #   compute_and_save_bareme()
     optimal_pension("nivvie", disable_api=True)
-
-#    print get_asf(1)
-#    pension_according_to_bareme()
-
-#   For PYC 
-#    compute_and_save_opt_pension("nivvie")
-#    test() 
