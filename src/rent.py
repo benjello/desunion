@@ -8,7 +8,7 @@
 
 
 from __future__ import division 
-from src.core.simulation import ScenarioSimulation
+from src.lib.simulation import ScenarioSimulation
 from scipy.optimize import fixed_point
 
 
