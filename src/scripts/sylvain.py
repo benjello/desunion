@@ -7,27 +7,48 @@ Created on 17 janv. 2013
 @author: PYC MBJ
 '''
 
-
 from scipy.optimize import fixed_point, fsolve
+from scripts.unaf import get_unaf
+    
 
-COUNTRY = 'france'
+COUNTRY = "france"
 DIR = u"C:/Users/Utilisateur/Dropbox/CAS/Désunions/"    
 YEAR = 2011
 EPS = 1e-3
 
 from pandas import concat
 from numpy import arange
-
 from scripts.utils import get_children, get_results_df, get_asf, get_test_case
 
 
-def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = None , criterium = None, disabled = None):
+def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters=None, criterium=None, disabled=None):
+    """
+    Return optimal pension according to different criteria
+    
+    Parameters
+    ----------
+    e : number of kids 
+    ea : number of teenagers
+    rev_smic_chef : revenue of the non custodian parent (in SMIC)
+    rev_smic_part : revenue of the custodian parent (in SMIC)
+    temps_garde : type of custody
+    uc_parameters : parameters to compute the household consumption units
+    criterium : the normative criteria used to compute the optimal pension
+    disabled : the disabled presattions of the socio-fiscal model
+    
+    Returns
+    -------
+    optimal_pension : the optimal pension  
+    """
+    
+    dep_decent_unaf = get_unaf(e, ea)
+    dep_decent_unaf2 = get_unaf(e, ea, a=1)
 
     # Define a useful function
     def func_optimal_pension(pension):
          
         if disabled is None:
-            dis =  ["asf"] 
+            dis =  ["asf"]
         elif "asf" not in disabled:
             dis = disabled + ['asf']
             
@@ -60,7 +81,7 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
             opt_pension = private_cost_after*(revdisp_chef+pension)/(revdisp_chef+revdisp_part)-private_cost_after_chef    
         elif criterium == "jacquot":
             alpha = uc_parameters['alpha']
-            beta = uc_parameters['beta']
+            beta  = uc_parameters['beta']
             gamma = uc_parameters['gamma']
             A = (.3*e + .5*ea)/(1 + .3*e + .5*ea)
             B = (alpha*gamma*(.3*e + .5*ea))/(1 + alpha*gamma*(.3*e + .5*ea))
@@ -69,12 +90,16 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
             opt_pension = ((A-B)*revdisp_chef*revdisp_part)/((revdisp_chef/C) + (revdisp_part/D))
         elif criterium == "same_total_cost":
             return total_cost_after_chef+total_cost_after_part-total_cost_before
-        
+        elif criterium == "unaf":
+            return total_cost_after_part - dep_decent_unaf
+        elif criterium == "unaf2":
+            return revdisp_part - dep_decent_unaf2
         return opt_pension 
     
-    if criterium == "same_total_cost":
-        optimal_pension, infodict, ier, mesg = fsolve(func_optimal_pension, 10000, xtol = EPS)
-        print optimal_pension, infodict, ier, mesg
+    if criterium == "same_total_cost" or criterium in ["unaf", "unaf2"]:
+        res = fsolve(func_optimal_pension, 10000, xtol = EPS)
+        print res
+        optimal_pension = res[0]
     else:
         try :
             optimal_pension = fixed_point(func_optimal_pension, 0, xtol = EPS, maxiter = 10)
@@ -169,23 +194,23 @@ def compute_and_save_opt_pension(criterium, disable_api = False):
 def pension_according_to_bareme(disable_api=False):
     e = 2
     ea = 0
-    rev_smic_chef = 3
-    rev_smic_part = 3
+    rev_smic_chef = 1.5
+    rev_smic_part = 1.5
     disabled = None
     if disable_api:
         disabled = ['api']
 
-    temps_garde ="alternee_pension_non_decl" # alternee_pension_non_decl', 'alternee_pension_decl
+    temps_garde ="classique"  # "alternee_pension_non_decl" # alternee_pension_non_decl', 'alternee_pension_decl
 
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
     df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = None, disabled=disabled)
     print df.to_string()
     
 def optimal_pension(criterium, disable_api = False):
-    e = 4
+    e = 2
     ea = 0
-    rev_smic_chef = 0.5
-    rev_smic_part = 0
+    rev_smic_chef = 1.5
+    rev_smic_part = 1.5
     temps_garde ="classique" # alternee_pension_non_decl', 'alternee_pension_decl
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
 
@@ -193,10 +218,22 @@ def optimal_pension(criterium, disable_api = False):
     if disable_api:
         disabled += ['api']
     
-    opt_pension = compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, 
-                            criterium = criterium, disabled=disabled)
- 
+    if criterium == "unaf":
+        print get_unaf(e,ea)
+        opt_pension_nv = compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, 
+                                criterium = "nivvie", disabled=disabled)
+        print "nivvie : ", opt_pension_nv
+          
+        opt_pension_unaf = compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, 
+                                criterium = "unaf", disabled=disabled)
+        print "unaf : ", opt_pension_unaf    
+        opt_pension = max(opt_pension_nv, opt_pension_unaf)
+    else: 
+        opt_pension = compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, 
+                                criterium=criterium, disabled=disabled)
+        
     asf = get_asf(e+ea, year=YEAR)
+    
     print 'opt_pension :', opt_pension  
     print 'asf :', asf  
     if opt_pension >= asf:
@@ -220,6 +257,21 @@ def optimal_pension(criterium, disable_api = False):
     # 3,1
     # jacquot pensio, 3387 alpha' : 0.3, 'beta' : .5, 'gamma' : 1.3}
     
+    
+def test_unaf():
+    e = 2
+    ea = 0
+    rev_smic_chef = 1.5
+    rev_smic_part = 1.5
+    temps_garde ="classique" # alternee_pension_non_decl', 'alternee_pension_decl
+    uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
+    print get_unaf(e,ea,a=1)
+    disabled = None
+    
+    opt_pension_unaf = compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, 
+                            criterium = "unaf2", disabled=disabled)
+    print "unaf2 : ", opt_pension_unaf    
+
 
 def test():
     e = 2
@@ -240,4 +292,7 @@ def test():
 
 if __name__ == '__main__':
 #   compute_and_save_bareme()
-    optimal_pension("nivvie", disable_api=True)
+    optimal_pension("same_total_cost", disable_api=True)
+#    test_unaf()
+#    print get_unaf(2,0)
+#    pension_according_to_bareme()

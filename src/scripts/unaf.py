@@ -1,6 +1,8 @@
 # /usr/bin/env python-
 # -*- coding:utf-8 -*-
 
+from __future__ import division
+
 '''
 Created on 28 févr. 2013
 
@@ -13,8 +15,20 @@ Using families from:
   http://www.unaf.fr/spip.php?rubrique160   
 """
 
-import numpy as np
 
+import numpy as np
+from pandas import DataFrame
+
+
+def get_unaf(d, f, a=0, b=0, c=0, e=0, g=0):
+    """
+    Cost of childrens according to an equation based on UNAF budget type
+    """
+    if g == 0:
+        g = (d+f)/2
+    cost =  12*(1294.952564*a + 1942.428846*b + 337.639231*c + 427.795449*d +
+        471.730000*e + 668.460897*f + 140.496538*g)
+    return cost
 
 def test():
     # a : adulte isolé
@@ -66,10 +80,14 @@ def test():
     mh =  2103.91
     
     # solve f*x = m
+    
+    # A supplementary equation is needed because the system is inconsistant
     fsup = [1,-1/1.5,0,0,0,0,0]
     msup = 0
     f = [fa, fb , fc, fd, fe, ff, fg, fh, fsup]
     m = [ma, mb , mc, md, me, mf, mg, mh, msup]
+    
+    results = DataFrame()
     
     for i in range(8):
         selected_f1 = list(f)
@@ -88,10 +106,19 @@ def test():
     
             # print i, np.linalg.det(f_mat)
             try: 
-                x = np.linalg.solve(f_mat, m_vec)
-                print x
+                x = DataFrame({str(i)+str(j): np.linalg.solve(f_mat, m_vec)}).T
             except:
-                pass
+                
+                x = None
+                
+            from pandas import concat
+            if x is not None:
+                results = concat([results,x])
+                
+    print results
+    print results.mean()
+    print results.std()
+    print results.std()/results.mean()
 
 if __name__ == '__main__':
     test()
