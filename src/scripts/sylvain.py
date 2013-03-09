@@ -168,7 +168,7 @@ def compute_and_save_opt_pension(criterium, disable_api = False):
     if disable_api:
         csv_file = DIR  + 'opt_pension_no_api.csv'  
     else:
-        csv_file = DIR  + 'opt_pension.csv'
+        csv_file = DIR  + 'opt_pension_new.csv'
 
     nb_enf_max = 4
     nb_enf_max_14 = 0
@@ -176,7 +176,7 @@ def compute_and_save_opt_pension(criterium, disable_api = False):
     rev_smic_step = .5
     temps_garde_range = ['classique', 'alternee_pension_non_decl', 'alternee_pension_decl']
     first = True
-    disabled = None
+    disabled = []
     if disable_api:
         disabled = ['api']
 
@@ -191,9 +191,9 @@ def compute_and_save_opt_pension(criterium, disable_api = False):
                             asf = get_asf(nb_enf, year=YEAR)
                             if opt_pension >= asf:
                                 if disabled is not None:
-                                    disabled += ['asf']
+                                    disabled = disabled + ['asf']
                                 else:
-                                    disabled += ['asf'] 
+                                    disabled = disabled + ['asf']
                                 df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = opt_pension, disabled = disabled)
                             else:
                                 df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = 0, disabled = disabled)
@@ -226,10 +226,10 @@ def pension_according_to_bareme(disable_api=False):
 def optimal_pension(criterium, disable_api = False):
     e = 2
     ea = 0
-    rev_smic_chef = 1.5
-    rev_smic_part = 1.5
-    temps_garde ="classique" # alternee_pension_non_decl', 'alternee_pension_decl
-    uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
+    rev_smic_chef = 3.5
+    rev_smic_part = 0
+    temps_garde ="alternee_pension_non_decl" # 'classique', 'alternee_pension_decl
+    uc_parameters = {'alpha' : 0.4, 'beta' : .7, 'gamma' : 1.4}
 
     disabled = []
     if disable_api:
@@ -309,12 +309,12 @@ def test():
 
 if __name__ == '__main__':
 #   compute_and_save_bareme()
-    
+    compute_and_save_opt_pension("share_private_cost_before_chef_nivvie_after", disable_api = False)
 #    df0 = pension_according_to_bareme(disable_api=True)
 #    df1 =  optimal_pension("same_total_cost", disable_api=True)
 #    df2 = optimal_pension("nivvie", disable_api=True)
-    optimal_pension("share_private_cost_before_part_nivvie_after", disable_api=True)
-    optimal_pension("share_private_cost_before_chef_nivvie_after", disable_api=True)
+#    optimal_pension("share_private_cost_before_part_nivvie_after", disable_api=True)
+#    optimal_pension("share_private_cost_before_chef_nivvie_after", disable_api=True)
 #    for df in [df0, df1, df2]:
 #        print df.to_string()
 #    test_unaf()
