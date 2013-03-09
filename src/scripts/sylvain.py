@@ -175,8 +175,8 @@ def compute_and_save_opt_pension(criterium, disable_api = False):
     rev_smic_max = 4 
     rev_smic_step = .5
     temps_garde_range = ['classique', 'alternee_pension_non_decl', 'alternee_pension_decl']
-    first = True
-    disabled = []
+    first = True    
+    disabled = None
     if disable_api:
         disabled = ['api']
 
@@ -193,7 +193,7 @@ def compute_and_save_opt_pension(criterium, disable_api = False):
                                 if disabled is not None:
                                     disabled = disabled + ['asf']
                                 else:
-                                    disabled = disabled + ['asf']
+                                    disabled = ['asf']
                                 df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = opt_pension, disabled = disabled)
                             else:
                                 df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = 0, disabled = disabled)
