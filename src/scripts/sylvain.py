@@ -217,9 +217,9 @@ def pension_according_to_bareme(disable_api=False):
     if disable_api:
         disabled = ['api']
 
-    temps_garde ="classique"  # "alternee_pension_non_decl" # alternee_pension_non_decl', 'alternee_pension_decl
+    temps_garde = "classique"  #'alternee_pension_decl' # "alternee_pension_non_decl" "classique" 
 
-    uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
+    uc_parameters = {'alpha' : 0.4, 'beta' : 0.7, 'gamma' : 1.4}
     df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = None, disabled=disabled)
     print df.to_string()
     
@@ -309,8 +309,8 @@ def test():
 
 if __name__ == '__main__':
 #   compute_and_save_bareme()
-    compute_and_save_opt_pension("share_private_cost_before_chef_nivvie_after", disable_api = False)
-#    df0 = pension_according_to_bareme(disable_api=True)
+#    compute_and_save_opt_pension("share_private_cost_before_chef_nivvie_after", disable_api = False)
+    pension_according_to_bareme(disable_api=True)
 #    df1 =  optimal_pension("same_total_cost", disable_api=True)
 #    df2 = optimal_pension("nivvie", disable_api=True)
 #    optimal_pension("share_private_cost_before_part_nivvie_after", disable_api=True)

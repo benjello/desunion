@@ -437,7 +437,7 @@ class DesunionSimulation(Simulation):
             simu = ScenarioSimulation()
             simu.set_config(year = self.datesim.year, scenario = scenario, 
                             country = self.country,
-                            totaux_file = self.totaux_file, 
+                            decomp_file = self.decomp_file, 
                             nmen = self.nmen, 
                             maxrev = self.maxrev)
             simu.set_param(self.P, self.P_default)
@@ -537,7 +537,9 @@ class DesunionSimulation(Simulation):
             df = df.reindex(index)
             df = df.rename(columns = {0: scenario})
             nivvie = revdisp/uc[scenario] # TODO: include savings !!
-            df = df.set_value('nivvie', scenario, nivvie)
+            df = concat([df, 
+                         DataFrame({scenario: nivvie}, index=['nivvie'])
+                         ])
             dfs[scenario] = df
             
         
