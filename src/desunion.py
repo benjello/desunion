@@ -36,8 +36,7 @@ def total_pension(rev_non_custodian, nb_enf, temps_garde = "classique"):
     Returns
     -------
     """
-    min_vital = 475
-    
+    min_vital_mensuel = 475
     coef = {'1': .18,
             '2': .31,
             '3': .40, 
@@ -45,7 +44,7 @@ def total_pension(rev_non_custodian, nb_enf, temps_garde = "classique"):
             '5': .53,
             '6': .57}
     
-    rev_net = max((rev_non_custodian - 475),0)
+    rev_net = max((rev_non_custodian - 12*min_vital_mensuel),0)
     if temps_garde == "classique":
         pension = rev_net*coef[str(nb_enf)]*.75 # TODO arrondi au .5 point de pourcentage à faire
         
@@ -160,6 +159,7 @@ class DesunionSimulation(Simulation):
         self.scenario_part = None # idem
         self.scenario_chef_seul = None
         self.scenario_part_seul = None
+        self.decomp_file = None
 
         self.pension_alimentaire = None
         self.children = dict() # {noi: {'non_custodian': None, 'temps_garde': None, 'pension_alim': None}
@@ -420,11 +420,10 @@ class DesunionSimulation(Simulation):
                 scenario_seuls.menage[0].update({key: val})
         
         
-    def _compute(self, difference):
+    def _compute(self):
         """
         Computes data_dict  from scenari
         """
-        
         scenari = { 'couple' : self.scenario,
                    'couple_seul' : self.scenario_seuls, 
                     'chef'   : self.scenario_chef,
@@ -438,14 +437,13 @@ class DesunionSimulation(Simulation):
             simu.set_config(year = self.datesim.year, scenario = scenario, 
                             country = self.country,
                             decomp_file = self.decomp_file, 
-                            nmen = self.nmen, 
+                            nmen = self.nmen,
                             maxrev = self.maxrev)
             simu.set_param(self.P, self.P_default)
             simu.disable_prestations(self.disabled_prestations)
-        
-            data, data_default = simu.compute(difference)
+            
+            data, data_default = simu.compute()
             datas[name] = {'data' : data, 'default': data_default}
-
         return datas
     
     def _compute_uc(self):
@@ -466,8 +464,7 @@ class DesunionSimulation(Simulation):
                     }
 
         alt = (self.get_temps_garde() in ['alternee_pension_decl', 'alternee_pension_non_decl'])
-#        print 'temps_garde :', self.get_temps_garde()
-#        print 'alternee :', alt
+
         for name, scenario in scenari.iteritems():
             age = dict()
             for noi, var in scenario.indiv.iteritems():   
@@ -490,7 +487,6 @@ class DesunionSimulation(Simulation):
             elif name == 'part':
                 self.uc[name] =  _uc_c(age.values(), alt=alt, only_kids=False, gamma=gamma, beta=beta)
             
-#        print self.uc
     
     def get_temps_garde(self):
         """
@@ -501,16 +497,15 @@ class DesunionSimulation(Simulation):
         
         
         
-    def get_results_dataframe(self, default = False, difference = True, index_by_code = False):
+    def get_results_dataframe(self, default = False, index_by_code = False):
         '''
         Formats data into a dataframe
         '''
-
-        datas = self._compute(difference)
+        datas = self._compute()
         self._compute_uc()
         uc = self.uc
         dfs = dict()
-        
+
         for scenario, dico in datas.iteritems():
             data = dico['data']
             data_default = dico['default']
@@ -532,8 +527,8 @@ class DesunionSimulation(Simulation):
                         index.append(row.desc)
                         data_dict[row.desc] = row.vals
             
-
             df = DataFrame(data_dict).T
+            
             df = df.reindex(index)
             df = df.rename(columns = {0: scenario})
             nivvie = revdisp/uc[scenario] # TODO: include savings !!
@@ -579,14 +574,14 @@ class DesunionSimulation(Simulation):
     
 
     def diag(self):
-#        print self.scenario_chef
-#        print self.scenario_part
+
         df = self.get_results_dataframe(index_by_code = True)
         df_nivvie = df.xs('nivvie')
         df_revdisp = df.xs('revdisp')
         df_rev = df.xs('rev_trav') + df.xs('pen') + df.xs('rev_cap_net') 
         
         df_af = df.xs('af')
+
         df_pfam = df.xs('pfam') 
         df_mini = df.xs('mini')
         df_logt = df.xs('logt')
@@ -649,6 +644,7 @@ class DesunionSimulation(Simulation):
         nivvie_loss_couple = df_nivvie[u"couple"]/df_nivvie["couple_seul"] 
         nivvie_loss_chef = df_nivvie[u"chef"]/df_nivvie["chef_seul"]
         nivvie_loss_part = df_nivvie[u"part"]/df_nivvie["part_seul"]
+        
         
         df2 = DataFrame( [df_revdisp, df_pfam, df_mini, df_logt, df_impo, df_nivvie])
         df2 = df2[ ['couple', 'part', 'chef'] ]
