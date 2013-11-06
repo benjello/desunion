@@ -137,13 +137,13 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
 
 def compute_and_save_bareme(disable_api = False):
 
-    csv_file = DIR + 'bareme_coef_08.csv'  
+    csv_file = DIR + 'bareme_correction_octobre_2013.csv'  
 
     nb_enf_max = 4
     nb_enf_max_14 = 0
     rev_smic_max = 4 
     rev_smic_step = .5
-    temps_garde_range = ['alternee_pension_non_decl', 'alternee_pension_decl'] #'classique'
+    temps_garde_range = ['classique','alternee_pension_non_decl' ] #, 'alternee_pension_decl'
 
     disabled = None
     if disable_api:
@@ -151,7 +151,7 @@ def compute_and_save_bareme(disable_api = False):
 
     first = True
 
-    for uc_parameters in [ {'alpha' : 0.4, 'beta' : .8, 'gamma' : 1.4}]:  #{'alpha' : 0, 'beta' : .5, 'gamma' : 1}, 
+    for uc_parameters in [ {'alpha' : 0.4, 'beta' : .7, 'gamma' : 1.4}]:  #{'alpha' : 0, 'beta' : .5, 'gamma' : 1}, 
         for nb_enf in range(1,nb_enf_max+1):
             for ea in range(0,nb_enf_max_14+1):            
                 e = nb_enf - ea
@@ -215,28 +215,28 @@ def compute_and_save_opt_pension(criterium, disable_api = False):
     
 
 
-def pension_according_to_bareme(disable_api=False):
+def pension_according_to_bareme(disable_api=True):
     e = 2
     ea = 0
     rev_smic_chef = 1.5
     rev_smic_part = 1.5
     disabled = None
     if disable_api:
-        disabled = ['api']
+        disabled = ['api', 'asf']
 
-    temps_garde ="classique"  # "alternee_pension_non_decl" # alternee_pension_non_decl', 'alternee_pension_decl
-
+    temps_garde = 'alternee_pension_non_decl'  #"classique" # "alternee_pension_decl" 'alternee_pension_non_decl'  
     uc_parameters = {'alpha' : 0.4, 'beta' : .7, 'gamma' : 1.4}
+
     df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, pension = None, disabled=disabled)
     print df.to_string()
     
 def optimal_pension(criterium, disable_api = False):
-    e = 4
+    e = 2
     ea = 0
-    rev_smic_chef = 0
-    rev_smic_part = 0
+    rev_smic_chef = 1.5
+    rev_smic_part = 1.5
     temps_garde ="classique" # 'classique', 'alternee_pension_decl
-    uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
+    uc_parameters = {'alpha' : 0.4, 'beta' : .7, 'gamma' : 1.4}
 
     disabled = []
     if disable_api:
@@ -285,8 +285,8 @@ def optimal_pension(criterium, disable_api = False):
 def test_unaf():
     e = 2
     ea = 0
-    rev_smic_chef = 1.5
-    rev_smic_part = 1.5
+    rev_smic_chef = 3
+    rev_smic_part = 3
     temps_garde ="classique" # alternee_pension_non_decl', 'alternee_pension_decl
     uc_parameters = {'alpha' : 0, 'beta' : .5, 'gamma' : 1}
     print get_unaf(e,ea,a=1)
@@ -300,9 +300,9 @@ def test_unaf():
 def test():
     e = 2
     ea = 0
-    rev_smic_chef = 2
-    rev_smic_part = 2
-    temps_garde ="classique"
+    rev_smic_chef = 1.5
+    rev_smic_part = 1.5
+    temps_garde ="alternee_pension_non_decl"
     children =  get_children(e, ea, temps_garde)
     test_case = get_test_case(children, rev_smic_chef, rev_smic_part)
     
@@ -315,18 +315,25 @@ def test():
 
 
 if __name__ == '__main__':
+
 #    compute_and_save_bareme()
 
 #    criteria = ["revdisp", "nivvie", "share_private_cost_before_chef_nivvie_after_coef"]
 #    for criterium in criteria:
-#        compute_and_save_opt_pension(criterium, disable_api = False)
+#    compute_and_save_opt_pension(criterium, disable_api = False)
 #    df0 = pension_according_to_bareme(disable_api=True)
+
+#   compute_and_save_bareme()
+#   compute_and_save_opt_pension("share_private_cost_before_chef_nivvie_after", disable_api = False)
+
+
 #    df1 =  optimal_pension("same_total_cost", disable_api=True)
 #    df2 = optimal_pension("nivvie", disable_api=True)
-#    optimal_pension("share_private_cost_before_chef_nivvie_after_coef", disable_api=True)
+#    optimal_pension("nivvie", disable_api=True)
 #    optimal_pension("zero_pension", disable_api=True)
 #    for df in [df0, df1, df2]:
 #        print df.to_string()
 #    test_unaf()
 #    print get_unaf(2,0)
-    pension_according_to_bareme()
+    pension_according_to_bareme(disable_api=True)
+#    test()

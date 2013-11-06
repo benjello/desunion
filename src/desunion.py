@@ -36,7 +36,7 @@ def total_pension(rev_non_custodian, nb_enf, temps_garde = "classique"):
     Returns
     -------
     """
-    min_vital = 475
+    min_vital = 475*12
     
     coef = {'1': .18,
             '2': .31,
@@ -45,7 +45,7 @@ def total_pension(rev_non_custodian, nb_enf, temps_garde = "classique"):
             '5': .53,
             '6': .57}
     
-    rev_net = max((rev_non_custodian - 475),0)
+    rev_net = max((rev_non_custodian - 12*475),0)
     if temps_garde == "classique":
         pension = rev_net*coef[str(nb_enf)]*.75 # TODO arrondi au .5 point de pourcentage à faire
         
@@ -437,7 +437,7 @@ class DesunionSimulation(Simulation):
             simu = ScenarioSimulation()
             simu.set_config(year = self.datesim.year, scenario = scenario, 
                             country = self.country,
-                            totaux_file = self.totaux_file, 
+                            decomp_file = self.decomp_file, 
                             nmen = self.nmen, 
                             maxrev = self.maxrev)
             simu.set_param(self.P, self.P_default)
@@ -537,7 +537,9 @@ class DesunionSimulation(Simulation):
             df = df.reindex(index)
             df = df.rename(columns = {0: scenario})
             nivvie = revdisp/uc[scenario] # TODO: include savings !!
-            df = df.set_value('nivvie', scenario, nivvie)
+            df = concat([df, 
+                         DataFrame({scenario: nivvie}, index=['nivvie'])
+                         ])
             dfs[scenario] = df
             
         

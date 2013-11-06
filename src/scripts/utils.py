@@ -70,9 +70,7 @@ def get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde = "classique
     children =  get_children(e, ea, temps_garde, pension)
     test_case = get_test_case(children, rev_smic_chef, rev_smic_part, uc_parameters=uc_parameters, pension=pension, disabled=disabled)
     df = test_case.diag()
-    
-     
-    s= DataFrame( {'enfant de moins de 14 ans' : e*ones(len(df)),
+    s  = DataFrame( {'enfant de moins de 14 ans' : e*ones(len(df)),
                    'enfant de plus de 14 ans' : ea*ones(len(df)),
                    'rev_smic_chef' :  rev_smic_chef*ones(len(df)),
                    'rev_smic_part' :  rev_smic_part*ones(len(df)),
