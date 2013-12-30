@@ -253,10 +253,19 @@ class DesunionSimulation(Simulation):
 
         scenario_chef.indiv[0].update({'sali': sal_chef })
         scenario_chef_seul.indiv[0].update({'sali': sal_chef })
+        for variable in ["ppe_tp_sa", "ppe_du_sa"]:
+            scenario_chef.indiv[0].update({variable: scenario.indiv[0][variable] })
+            scenario_chef_seul.indiv[0].update({variable: scenario.indiv[0][variable] })
 
         sal_part = scenario.indiv[1]['sali']   # Could be more general
         scenario_part.indiv[0].update({'sali': sal_part })
         scenario_part_seul.indiv[0].update({'sali': sal_part })
+
+        for variable in ["ppe_tp_sa", "ppe_du_sa"]:
+            scenario_chef.indiv[0].update({variable: scenario.indiv[0][variable] })
+            scenario_chef_seul.indiv[0].update({variable: scenario.indiv[0][variable] })
+            scenario_part.indiv[0].update({variable: scenario.indiv[1][variable] })
+            scenario_part_seul.indiv[0].update({variable: scenario.indiv[1][variable] })
 
         # TODO: get more infos from couple scenario
 
@@ -411,9 +420,23 @@ class DesunionSimulation(Simulation):
         
         scenario.indiv[0].update({ 'sali': sal_chef })
         scenario_seuls.indiv[0].update({ 'sali': sal_chef })
+        if sal_chef >= 1072*12:  # TODO: for 2011
+            scenario.indiv[0].update({"ppe_tp_sa":True})
+            scenario_seuls.indiv[0].update({"ppe_tp_sa":True})
+        else:
+            duree = round(1607*sal_chef/(1072*12))
+            scenario.indiv[0].update({"ppe_du_sa": duree })   # 1607h fonction publique
+            scenario_seuls.indiv[0].update({"ppe_du_sa": duree})
+        
         scenario.indiv[1].update({ 'sali': sal_part})
         scenario_seuls.indiv[1].update({ 'sali': sal_part})
-        
+        if sal_part >= 1072*12:  # TODO: for 2011
+            scenario.indiv[1].update({"ppe_tp_sa":True})
+            scenario_seuls.indiv[1].update({"ppe_tp_sa":True})
+        else:
+            duree = round(1607*sal_part/(1072*12))
+            scenario.indiv[1].update({"ppe_du_sa": duree })   # 1607h fonction publique
+            scenario_seuls.indiv[1].update({"ppe_du_sa": duree})
         
         if housing is None:
             scenario.menage[0].update({'loyer' : get_loyer(scenario)})
