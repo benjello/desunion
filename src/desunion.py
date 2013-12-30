@@ -36,7 +36,9 @@ def total_pension(rev_non_custodian, nb_enf, temps_garde = "classique"):
     Returns
     -------
     """
+
     min_vital_mensuel = 475
+
     coef = {'1': .18,
             '2': .31,
             '3': .40, 
@@ -44,7 +46,9 @@ def total_pension(rev_non_custodian, nb_enf, temps_garde = "classique"):
             '5': .53,
             '6': .57}
     
+
     rev_net = max((rev_non_custodian - 12*min_vital_mensuel),0)
+
     if temps_garde == "classique":
         pension = rev_net*coef[str(nb_enf)]*.75 # TODO arrondi au .5 point de pourcentage à faire
         

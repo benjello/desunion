@@ -181,13 +181,18 @@ def compute_optimal_pension(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc
         elif criterium == "share_private_cost_before_chef_nivvie_after":
             opt_pension = - private_cost_after_chef  + private_cost_before*nivvie_chef_after/(nivvie_chef_after+nivvie_part_after)
         
+        elif criterium == "share_private_cost_before_chef_nivvie_after_coef":
+            opt_pension = - private_cost_after_chef  + 1.4*private_cost_before*nivvie_chef_after/(nivvie_chef_after+nivvie_part_after)
+        
         elif criterium == "share_private_cost_before_part_nivvie_after":
             opt_pension = private_cost_after_part  - private_cost_before*nivvie_part_after/(nivvie_chef_after+nivvie_part_after)
         
         elif criterium == "same_total_cost":
             return total_cost_after_chef+total_cost_after_part-total_cost_before
+        
         elif criterium == "unaf":
             return total_cost_after_part - dep_decent_unaf
+        
         elif criterium == "unaf2":
             return revdisp_part - dep_decent_unaf2
         return opt_pension 
