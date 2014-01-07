@@ -253,19 +253,22 @@ class DesunionSimulation(Simulation):
 
         scenario_chef.indiv[0].update({'sali': sal_chef })
         scenario_chef_seul.indiv[0].update({'sali': sal_chef })
-        for variable in ["ppe_tp_sa", "ppe_du_sa"]:
-            scenario_chef.indiv[0].update({variable: scenario.indiv[0][variable] })
-            scenario_chef_seul.indiv[0].update({variable: scenario.indiv[0][variable] })
+#        for variable in ["ppe_tp_sa", "ppe_du_sa"]:
+#            if variable in scenario.indiv[0].keys():
+#                scenario_chef.indiv[0].update({variable: scenario.indiv[0][variable] })
+#                scenario_chef_seul.indiv[0].update({variable: scenario.indiv[0][variable] })
 
         sal_part = scenario.indiv[1]['sali']   # Could be more general
         scenario_part.indiv[0].update({'sali': sal_part })
         scenario_part_seul.indiv[0].update({'sali': sal_part })
 
         for variable in ["ppe_tp_sa", "ppe_du_sa"]:
-            scenario_chef.indiv[0].update({variable: scenario.indiv[0][variable] })
-            scenario_chef_seul.indiv[0].update({variable: scenario.indiv[0][variable] })
-            scenario_part.indiv[0].update({variable: scenario.indiv[1][variable] })
-            scenario_part_seul.indiv[0].update({variable: scenario.indiv[1][variable] })
+            if variable in scenario.indiv[0].keys():
+                scenario_chef.indiv[0].update({variable: scenario.indiv[0][variable] })
+                scenario_chef_seul.indiv[0].update({variable: scenario.indiv[0][variable] })
+            if variable in scenario.indiv[1].keys():
+                scenario_part.indiv[0].update({variable: scenario.indiv[1][variable] })
+                scenario_part_seul.indiv[0].update({variable: scenario.indiv[1][variable] })
 
         # TODO: get more infos from couple scenario
 

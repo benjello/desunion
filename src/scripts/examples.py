@@ -25,8 +25,8 @@ from scripts.utils import get_children, get_results_df, get_asf, get_test_case, 
 def pension_according_to_bareme(disable_api=False):
     e = 2
     ea = 0
-    rev_smic_chef = 1.5
-    rev_smic_part = 1.5
+    rev_smic_chef = 1
+    rev_smic_part = 1
     disabled = None
     if disable_api:
         disabled = ['api']
