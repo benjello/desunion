@@ -304,13 +304,14 @@ class DesunionSimulation(Simulation):
                 scenario_part.addIndiv(noi_enf_part, birth, 'pac', 'enf')
                 scenario_part.indiv[noi_enf_part].update({'alt': 1, 'quimen': 'enf'+str(noi_enf_part)})
                 scenario_part.declar[0]['caseT'] = True
+                alr_part += pension_alim
                 noi_enf_part += 1
 
                 scenario_chef.addIndiv(noi_enf_chef, birth, 'pac', 'enf')
                 scenario_chef.indiv[noi_enf_chef].update({'alt': 1})
                 scenario_chef.declar[0]['caseT'] = True
                 noi_enf_chef += 1
-
+                alv_chef += pension_alim 
                 
             elif temps_garde == 'alternee_pension_decl':# TODO: garde alternée pas de pension alimentaire ?
                                             # garde alternée juridique ou pas
@@ -335,12 +336,23 @@ class DesunionSimulation(Simulation):
         # Beware : received pension alim. are attributed for individuals
         #          paid pension alim. are "charges déductibes" on foyers' declarations  
         alv_net_chef = alv_chef - alr_chef
-        if alv_net_chef >= 0:   
-            scenario_chef.declar[0].update({'f6gu': alv_net_chef}) # TODO: pas forcément en 6gu 
+        
+        if alv_net_chef >= 0:
             scenario_part.indiv[0].update({'alr': alv_net_chef})
+            if temps_garde == 'alternee_pension_non_decl':
+                scenario_part.indiv[0]["alr_decl"] = False
+            else:
+                scenario_part.indiv[0]["alr_decl"] = True
+                scenario_chef.declar[0].update({'f6gu': alv_net_chef}) # TODO: pas forcément en 6gu            
+            
         else:
             scenario_chef.indiv[0].update({'alr': -alv_net_chef})
-            scenario_part.declar[0].update({'f6gu': -alv_net_chef})
+            if temps_garde == 'alternee_pension_non_decl':
+                scenario_chef.indiv[0]["alr_decl"] = False
+            else:
+                scenario_chef.indiv[0]["alr_decl"] = True
+                scenario_part.declar[0].update({'f6gu': -alv_net_chef})                
+            
 
         self.scenario_chef = scenario_chef
         self.scenario_part = scenario_part
@@ -378,6 +390,7 @@ class DesunionSimulation(Simulation):
         for key, val in housing_custodian_seul.iteritems():
             scenario_part_seul.menage[0].update({key: val})
         
+        print scenario_part
         
     def set_children(self, children):
         """
@@ -601,8 +614,11 @@ class DesunionSimulation(Simulation):
     
 
     def diag(self):
+        
 
         df = self.get_results_dataframe(index_by_code = True)
+        # print df.to_string()
+
         df_nivvie = df.xs('nivvie')
         df_revdisp = df.xs('revdisp')
         df_rev = df.xs('rev_trav') + df.xs('pen') + df.xs('rev_cap_net') 
@@ -612,6 +628,7 @@ class DesunionSimulation(Simulation):
         df_pfam = df.xs('pfam') 
         df_mini = df.xs('mini')
         df_logt = df.xs('logt')
+        df_ppe  = df.xs('ppe')
         df_impo = df.xs('ppe') + df.xs('impo')
         df_impo.name = "impo+ppe"
         df_public = df.xs('psoc') + df.xs('ppe') + df.xs('impo')
@@ -634,8 +651,7 @@ class DesunionSimulation(Simulation):
                                   df_pfam['chef'] + df_impo['chef'] )
             df_nivvie['chef'] = df_revdisp['chef']/self.uc['chef']
             
-            df_revdisp['part'] = ( df_revdisp['part'] - df_af['part']/2 + 
-                                   pension_alim_tot )
+            df_revdisp['part'] =  df_revdisp['part'] - df_af['part']/2 
             df_pfam['part'] -= df_af['part']/2
             df_public['part'] = ( df_logt['part'] + df_mini['part']+ 
                                   df_pfam['part'] + df_impo['part'] )
@@ -673,7 +689,7 @@ class DesunionSimulation(Simulation):
         nivvie_loss_part = df_nivvie[u"part"]/df_nivvie["part_seul"]
         
         
-        df2 = DataFrame( [df_revdisp, df_pfam, df_mini, df_logt, df_impo, df_nivvie])
+        df2 = DataFrame( [df_revdisp, df_pfam, df_mini, df_logt, df_impo, df_ppe, df_nivvie])
         df2 = df2[ ['couple', 'part', 'chef'] ]
         df2 = df2.set_value(u"dépense totale pour enfants", 'couple', total_cost_before)
         df2 = df2.set_value(u"dépense totale pour enfants", 'chef', total_cost_after_chef)
@@ -713,5 +729,5 @@ if __name__ == '__main__':
     alpha = 1 
     beta  = .5
     gamma = 1.5
-    print _uc_couple(age_c, only_kids = False)
-    print _uc_c(age, alt, only_kids = False, gamma = gamma , beta = beta)    print _uc_nc(age, alt, only_kids = False, alpha = alpha, beta = beta)
+    # print _uc_couple(age_c, only_kids = False)
+    # print _uc_c(age, alt, only_kids = False, gamma = gamma , beta = beta)    # print _uc_nc(age, alt, only_kids = False, alpha = alpha, beta = beta)

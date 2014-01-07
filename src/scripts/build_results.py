@@ -33,7 +33,7 @@ def compute_and_save_bareme(disable_api = False):
 
     disabled = None
     if disable_api:
-        disabled = ['api']
+        disabled = ['api'] + ["majo_rsa"]
     else:
         disabled = []
 
@@ -44,9 +44,7 @@ def compute_and_save_bareme(disable_api = False):
             for ea in range(0,nb_enf_max_14+1):
                 e = nb_enf - ea
                 for temps_garde in temps_garde_range:
-                    if temps_garde == "alternee_pension_non_decl":
-                        disabled += ['asf']
-                    
+                    disabled += ['asf']
                     for rev_smic_chef in arange(0,rev_smic_max, rev_smic_step):
                         for rev_smic_part in arange(0,rev_smic_max, rev_smic_step):
                             df = get_results_df(e, ea, rev_smic_chef, rev_smic_part, temps_garde, uc_parameters = uc_parameters, disabled=disabled)
@@ -76,7 +74,7 @@ def compute_and_save_opt_pension(criterium, disable_api = False):
     first = True    
     disabled = None
     if disable_api:
-        disabled = ['api']
+        disabled = ['api'] + ["majo_rsa"]
 
     for uc_parameters in [ {'alpha' : 0, 'beta' : .5, 'gamma' : 1}, {'alpha' : 0.4, 'beta' : .7, 'gamma' : 1.4}]:  
         for nb_enf in range(1,nb_enf_max+1):
